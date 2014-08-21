@@ -6,14 +6,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.regex.Matcher;
@@ -29,29 +24,12 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.w3c.dom.ProcessingInstruction;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.thoughtworks.xstream.XStream;
 
-class Cpu{
-	int usage;
-	int cpuId;
-	public int getUsage() {
-		return usage;
-	}
-	public void setUsage(int usage) {
-		this.usage = usage;
-	}
-	public int getCpuId() {
-		return cpuId;
-	}
-	public void setCpuId(int cpuId) {
-		this.cpuId = cpuId;
-	}
-}
 
 public class TestResourceController {
 	/*test attribute*/
@@ -65,7 +43,9 @@ public class TestResourceController {
 	private static final String MEMTOTAL_STRING = "MemTotal";
 	private static final String MEMFREE_STRING = "MemFree";
 	private static final Pattern PROCFS_MEMFILE_FORMAT = Pattern.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
-	
+	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
+	private static final int START_CONTAINER_SUCCESS_CODE =204;
+	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
 	
@@ -76,38 +56,24 @@ public class TestResourceController {
 //				testResourceController.config.getVcpuRatio();
 //		System.out.println(config);
 		TestResource testResource = new TestResource();
+		Container container = null;
 		testResource.setCpuNumber(1);
 		//testResource.setMemoryLimit(256*1024*);
-//		int requestCount = 1;
-//		for(int i = 0; i < requestCount; ++i){
-//			if(testResourceController.createContainer(testResource) != null)
-//				System.out.println("success");
-//			else {
-//				System.out.println("fail");
-//			}
-//		}
-		Container container = testResourceController.inspectContainer("4cac0759f940");
-		System.out.println(container.getId());
-		System.out.println(container.getPort());
-		//System.out.println(testResourceController.getProcessor().size());
-		//System.out.println(testResourceController.getCurrentResourceStatus().getMemFree());
-		//System.out.println(testResourceController.createContainer(null).getContaiderId());
+		int requestCount = 7;
+		for(int i = 0; i < requestCount; ++i){
+			container = testResourceController.createContainer(testResource);
+			if(container != null){
+				System.out.println("success");
+				System.out.println("id: "+container.getId());
+				System.out.println("port: "+container.getPort());
+			}
+			else {
+				System.out.println("fail");
+			}
+		}
 	}
 	
 	public TestResourceController(){
-		//avalCpu = Runtime.getRuntime().availableProcessors();
-		avalCpu = 2;
-		processor = new PriorityQueue<Cpu>(avalCpu, new Comparator<Cpu>() {
-			public int compare(Cpu c1, Cpu c2){
-				return c1.getUsage() - c2.getUsage();
-			}
-		});
-		for(int i = 0; i < avalCpu; ++i){
-			Cpu cpu = new Cpu();
-			cpu.setCpuId(i);
-			cpu.setUsage(0);
-			processor.add(cpu);
-		}
 		XStream xStream = new XStream();
 		InputStream in = null;
 		try {
@@ -168,69 +134,75 @@ public class TestResourceController {
 	 */
 	public Container createContainer(TestResource resource){
 		Container container = new Container();
-		HttpPost httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/create");
+		HttpEntity httpEntity = null;
+		HttpPost httpPost = null;
 		//to set the config of the container
-		CreateContainer createContainer = new CreateContainer();
-		StringBuilder stringBuilder = new StringBuilder();
-		createContainer.setImage(config.getImageName());
+		String poolResponse = ResourcePool.getInstance().requestResource(resource);
+		if(poolResponse != null){
+			httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/create");
+			CreateContainer createContainer = new CreateContainer();
+			createContainer.setImage(config.getImageName());
+			httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
+			httpPost.setEntity(httpEntity);
+			container.setId(createContainerPost(httpPost));
+		}
+		else
+			return null;
 		
-		long testCpuNumber = resource.getCpuNumber();
-		long testMemoryLimit = resource.getMemoryLimit();
-		//getCurrentResourceStatus().getMemFree()*1024 >= testMemoryLimit
-		if(avalCpu >= testCpuNumber &&
-				true){
-			for(int i = 0; i < testCpuNumber; ++i){
-				Cpu cpu = processor.poll();
-				cpu.setUsage(cpu.getUsage() + 1);
-				stringBuilder.append(cpu.getCpuId()+",");
-				processor.add(cpu);
-			}
-			stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-			avalCpu -= resource.getCpuNumber();
-			createContainer.setCpuset(stringBuilder.toString());
-		}
-		else {
-			return null;
-		}
-		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
-		httpPost.setEntity(httpEntity);
-		String result = null;
-		try {
-			CloseableHttpResponse response = httpClient.execute(httpPost);
-			result = EntityUtils.toString(response.getEntity(), "utf-8");
-			System.out.println(response.getStatusLine().getStatusCode());
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		//get container id
-		CreateContainerResponse createContainerResponse;
-		try {
-			createContainerResponse = gson.fromJson(result, CreateContainerResponse.class);
-			result = createContainerResponse.getId();
-			container.setId(result);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
-		}
 		//to configure a container and start it
-		StartContainer startContainer = new StartContainer();
-		List<String> ports = new ArrayList<String>();
-		ports.add("0");
-		startContainer.setPortbindings(ports);
-		httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
-		httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/" + container.getId() + "/start");
-		httpPost.setEntity(httpEntity);
+		if(container.getId() != null){
+			StartContainer startContainer = new StartContainer();
+			List<String> ports = new ArrayList<String>();
+			ports.add("0");
+			startContainer.setPortbindings(ports);
+			httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/" + container.getId() + "/start");
+			httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
+			httpPost.setEntity(httpEntity);
+			int startResponse = startContainerPost(httpPost);
+			System.out.println(startResponse);
+			if(startResponse==0)
+				return null;
+		}
+		
+		//set container's port
+		container.setPort(inspectContainer(container.getId()).getPort());
+		return container;
+	}
+	
+	/**
+	 * 
+	 * @param httpPost passed from createContainer
+	 * @return container id, null if failed
+	 */
+	private String createContainerPost(HttpPost httpPost){
+		String id = null;
 		try {
 			CloseableHttpResponse response = httpClient.execute(httpPost);
-			System.out.println(response.getStatusLine().getStatusCode());
+			if(response.getStatusLine().getStatusCode() == CREATE_CONTAINER_SUCCESS_CODE){
+				id = EntityUtils.toString(response.getEntity(), "utf-8");
+				CreateContainerResponse createContainerResponse = gson.fromJson(id, CreateContainerResponse.class);
+				id = createContainerResponse.getId();
+			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return container;
+		return id;
+	}
+	
+	private int startContainerPost(HttpPost httpPost){
+		try {
+			CloseableHttpResponse response = httpClient.execute(httpPost);
+			if(response.getStatusLine().getStatusCode() == START_CONTAINER_SUCCESS_CODE){
+				return 1;
+			}
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 0;
 	}
 	/**
 	 * 
@@ -239,15 +211,13 @@ public class TestResourceController {
 	private Container inspectContainer(String id){
 		HttpGet httpGet = new HttpGet(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+id+"/json");
 		String result = null;
-		Container container = null;
+		Container container = new Container();
 		InspectContainer inspectContainer = new InspectContainer();
 		try {
 			CloseableHttpResponse response = httpClient.execute(httpGet);
-			if(response.getStatusLine().getStatusCode() == 200){
+			if(response.getStatusLine().getStatusCode() == INSPECT_CONTAINER_SUCCESS_CODE){
 				result = EntityUtils.toString(response.getEntity(), "utf-8");
-				System.out.println(result);
 				inspectContainer = gson.fromJson(result, InspectContainer.class);
-				System.out.println(inspectContainer.getArgs().get(0));
 				container.setId(inspectContainer.getId());
 				container.setPort(config.getDockerHostIp()+":"+inspectContainer.getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort());
 			}

@@ -9,7 +9,7 @@ import com.thoughtworks.xstream.XStream;
 public class ResourceControllerConfig {
 	private String dockerHostIp;
 	private String dockerHostPort;
-	private int vcpuRatio;
+	private long vcpuRatio;
 	private String imageName;
 	
 	public String getDockerHostPort() {
@@ -28,11 +28,11 @@ public class ResourceControllerConfig {
 		this.dockerHostIp = dockerHostIp;
 	}
 
-	public int getVcpuRatio() {
+	public long getVcpuRatio() {
 		return vcpuRatio;
 	}
 
-	public void setVcpuRatio(int vcpuRatio) {
+	public void setVcpuRatio(long vcpuRatio) {
 		this.vcpuRatio = vcpuRatio;
 	}
 
