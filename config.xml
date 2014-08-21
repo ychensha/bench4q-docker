@@ -1,0 +1,6 @@
+<org.bench4q.docker.ResourceControllerConfig>
+  <dockerHostIp>133.133.134.74</dockerHostIp>
+  <dockerHostPort>2375</dockerHostPort>
+  <vcpuRatio>3</vcpuRatio>
+  <imageName>chensha/bench4q-agent-test</imageName>
+</org.bench4q.docker.ResourceControllerConfig>
