@@ -74,6 +74,7 @@ class CreateContainerResponse{
 }
 
 public class Container {
+	private String ip;
 	private String port;
 	private Config config;
 	private String created;
@@ -92,6 +93,14 @@ public class Container {
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getIp() {
+		return ip;
+	}
+
+	public void setIp(String ip) {
+		this.ip = ip;
 	}
 
 	public String getPort() {

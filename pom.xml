@@ -36,5 +36,10 @@
 		<artifactId>xstream</artifactId>
 		<version>1.2.2</version>
 	</dependency>
+	<dependency>
+		<groupId>org.bench4q</groupId>
+		<artifactId>bench4q-share</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</dependency>
   </dependencies>
 </project>

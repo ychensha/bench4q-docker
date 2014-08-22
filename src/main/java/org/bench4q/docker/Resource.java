@@ -3,27 +3,46 @@ package org.bench4q.docker;
 import java.util.List;
 
 public class Resource {
-	private long avalCpu;
-	private List<Container> containers;
-	private long totalMem;
-	private long freeMem;
-
-	public long getTotalMem() {
-		return totalMem;
+	private int totalCpu;
+	private int freeCpu;
+	private int usedCpu;
+	private long totalMemeory;
+	private long freeMemory;
+	private long usedMemory;
+	public int getTotalCpu() {
+		return totalCpu;
 	}
-	public void setTotalMem(long totalMem) {
-		this.totalMem = totalMem;
+	public void setTotalCpu(int totalCpu) {
+		this.totalCpu = totalCpu;
 	}
-	public long getFreeMem() {
-		return freeMem;
+	public int getFreeCpu() {
+		return freeCpu;
 	}
-	public void setFreeMem(long freeMem) {
-		this.freeMem = freeMem;
+	public void setFreeCpu(int freeCpu) {
+		this.freeCpu = freeCpu;
 	}
-	public long getAvalCpu() {
-		return avalCpu;
+	public int getUsedCpu() {
+		return usedCpu;
 	}
-	public void setAvalCpu(long avalCpu) {
-		this.avalCpu = avalCpu;
+	public void setUsedCpu(int usedCpu) {
+		this.usedCpu = usedCpu;
+	}
+	public long getTotalMemeory() {
+		return totalMemeory;
+	}
+	public void setTotalMemeory(long totalMemeory) {
+		this.totalMemeory = totalMemeory;
+	}
+	public long getFreeMemory() {
+		return freeMemory;
+	}
+	public void setFreeMemory(long freeMemory) {
+		this.freeMemory = freeMemory;
+	}
+	public long getUsedMemory() {
+		return usedMemory;
+	}
+	public void setUsedMemory(long usedMemory) {
+		this.usedMemory = usedMemory;
 	}
 }

@@ -35,11 +35,10 @@ class Cpu{
 
 public class ResourcePool {
 	private static final ResourcePool instance = new ResourcePool();
-	private long avalCpu;
-	private long maxAvalCpu;
-	private long totalMem;
-	private long freeMem;
-	private long maxFreeMem;
+	private int totalCpu;
+	private int freeCpu;
+	private long totalMemeory;
+	private long freeMemory;
 	private Queue<Cpu> processorQueue;
 	private List<Cpu> processorList;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -84,15 +83,15 @@ public class ResourcePool {
 	private ResourcePool(){
 //		avalCpu = Runtime.getRuntime().availableProcessors();
 		System.out.println("resource pool init...");
-		avalCpu = 2;
+		freeCpu = 2;
 		ResourceControllerConfig config = new ResourceControllerConfig();
-		processorQueue = new PriorityQueue<Cpu>((int)avalCpu, new Comparator<Cpu>(){
+		processorQueue = new PriorityQueue<Cpu>(freeCpu, new Comparator<Cpu>(){
 			public int compare(Cpu c1, Cpu c2){
 				return c1.getUsage() - c2.getUsage();
 			}
 		});
 		processorList = new ArrayList<Cpu>();
-		for(int i = 0; i < avalCpu; ++i){
+		for(int i = 0; i < freeCpu; ++i){
 			Cpu cpu = new Cpu();
 			cpu.setCpuId(i);
 			cpu.setUsage(0);
@@ -107,8 +106,8 @@ public class ResourcePool {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		avalCpu *= config.getVcpuRatio();
-		maxAvalCpu = avalCpu;
+		freeCpu *= config.getVcpuRatio();
+		totalCpu = freeCpu;
 		BufferedReader bufferedReader = null;
 		Matcher mat = null;
 //		try {
@@ -118,11 +117,12 @@ public class ResourcePool {
 //				mat = PROCFS_MEMFILE_FORMAT.matcher(line);
 //				if(mat.find()){
 //					if(mat.group(1).equals(MEMTOTAL_STRING))
-//						totalMem = Long.parseLong(mat.group(2))*1024;
+//						totalMemory = Long.parseLong(mat.group(2));
 //					else if(mat.group(1).equals(MEMFREE_STRING))
-//						maxFreeMem = Long.parseLong(mat.group(2))*1024;
+//						freeMemory = Long.parseLong(mat.group(2));
 //				}
 //			}
+//			usedMemory = totalMemeory - freeMemory;
 //		} catch (FileNotFoundException e) {
 //			e.printStackTrace();
 //		} catch (IOException e) {
@@ -140,14 +140,14 @@ public class ResourcePool {
 	 * @param resource request certain resource used to test
 	 * @return NOW is CPU setting
 	 */
-	public String requestResource(TestResource resource){
+	public String requestResource(RequestResource resource){
 		long testCpu = resource.getCpuNumber();
 		long testMem = resource.getMemoryLimit();
 		String response = null;
 		lock.writeLock().lock();
 		try{
 			StringBuilder builder = new StringBuilder();
-			if(avalCpu >= testCpu){
+			if(freeCpu >= testCpu && freeMemory >= testMem){
 				for(int i = 0; i < testCpu; ++i){
 					Cpu cpu = processorQueue.poll();
 					cpu.setUsage(cpu.getUsage() + 1);
@@ -155,14 +155,13 @@ public class ResourcePool {
 					processorQueue.add(cpu);
 				}
 				builder.deleteCharAt(builder.length() - 1);
-				avalCpu -= testCpu;
+				freeCpu -= testCpu;
 				response = builder.toString();
 			}
 		} finally{
 			lock.writeLock().unlock();
 		}
 		
-		System.out.println("after request, avalCpu: " + avalCpu);
 		return response;
 	}
 	
@@ -174,10 +173,10 @@ public class ResourcePool {
 			for(int i = 0; i < cpus.length; ++i){
 				Cpu cpu = processorList.get(Integer.valueOf(cpus[i]));
 				cpu.setUsage(cpu.getUsage() - 1);
-				avalCpu++;
+				freeCpu++;
 			}
 			//update freeMem
-			freeMem += container.getConfig().getMemory();
+			freeMemory += container.getConfig().getMemory();
 			//update the Priority Queue
 			int size = processorList.size();
 			for(int i = 0; i < size; ++i){
@@ -187,16 +186,18 @@ public class ResourcePool {
 		} finally{
 			lock.writeLock().unlock();
 		}
-		
-		System.out.println("after release, avalCpu: " + avalCpu);
 	}
 	
-	public Resource requestCurrentStatus(){
+	public Resource getCurrentStatus(){
 		Resource resource = new Resource();
 		lock.readLock().lock();
 		try{
-			resource.setAvalCpu(avalCpu);
-			resource.setFreeMem(freeMem);
+			resource.setFreeCpu(freeCpu);
+			resource.setTotalCpu(totalCpu);
+			resource.setUsedCpu(totalCpu - freeCpu);
+			resource.setTotalMemeory(totalMemeory);
+			resource.setFreeMemory(freeMemory);
+			resource.setUsedMemory(totalMemeory - freeMemory);
 		} finally{
 			lock.readLock().unlock();
 		}
@@ -205,37 +206,5 @@ public class ResourcePool {
 	
 	public static ResourcePool getInstance(){
 		return instance;
-	}
-
-	public long getAvalCpu() {
-		return avalCpu;
-	}
-
-	public void setAvalCpu(long avalCpu) {
-		this.avalCpu = avalCpu;
-	}
-
-	public long getMaxAvalCpu() {
-		return maxAvalCpu;
-	}
-
-	public void setMaxAvalCpu(long maxAvalCpu) {
-		this.maxAvalCpu = maxAvalCpu;
-	}
-
-	public long getFreeMem() {
-		return freeMem;
-	}
-
-	public void setFreeMem(long freeMem) {
-		this.freeMem = freeMem;
-	}
-
-	public long getMaxFreeMem() {
-		return maxFreeMem;
-	}
-
-	public void setMaxFreeMem(long maxFreeMem) {
-		this.maxFreeMem = maxFreeMem;
 	}
 }

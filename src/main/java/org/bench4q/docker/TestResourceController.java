@@ -48,7 +48,7 @@ public class TestResourceController {
 	
 	public static void main(String[] args){
 		TestResourceController testResourceController = new TestResourceController();
-		TestResource testResource = new TestResource();
+		RequestResource testResource = new RequestResource();
 		Container container = null;
 		testResource.setCpuNumber(1);
 		//testResource.setMemoryLimit(256*1024*);
@@ -82,13 +82,13 @@ public class TestResourceController {
 	 * @return current resource status
 	 */
 	public Resource getCurrentResourceStatus(){
-		return ResourcePool.getInstance().requestCurrentStatus();
+		return ResourcePool.getInstance().getCurrentStatus();
 	}
 	
 	/**
 	 * @return the container created
 	 */
-	public Container createContainer(TestResource resource){
+	public Container createContainer(RequestResource resource){
 		Container container = new Container();
 		HttpEntity httpEntity = null;
 		HttpPost httpPost = null;
@@ -163,7 +163,7 @@ public class TestResourceController {
 	 * 
 	 * @return container info
 	 */
-	private Container inspectContainer(String id){
+	public Container inspectContainer(String id){
 		HttpGet httpGet = new HttpGet(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+id+"/json");
 		String result = null;
 		InspectContainer inspectContainer = new InspectContainer();
@@ -172,7 +172,8 @@ public class TestResourceController {
 			if(response.getStatusLine().getStatusCode() == INSPECT_CONTAINER_SUCCESS_CODE){
 				result = EntityUtils.toString(response.getEntity(), "utf-8");
 				inspectContainer = gson.fromJson(result, InspectContainer.class);
-				inspectContainer.setPort(config.getDockerHostIp()+":"+inspectContainer.getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort());
+				inspectContainer.setIp(config.getDockerHostIp());
+				inspectContainer.setPort(inspectContainer.getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort());
 			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
