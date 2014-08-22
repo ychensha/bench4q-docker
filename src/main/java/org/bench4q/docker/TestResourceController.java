@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -40,26 +41,25 @@ public class TestResourceController {
 	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
 	private static final int START_CONTAINER_SUCCESS_CODE =204;
 	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
+	private static final int KILL_CONTAINER_SUCCESS_CODE = 204;
+	private static final int REMOVE_CONTAINER_SUCCESS_CODE = 204;
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
 	
 	public static void main(String[] args){
 		TestResourceController testResourceController = new TestResourceController();
-//		String config = testResourceController.config.getDockerHostPort()+
-//				testResourceController.config.getImageName()+
-//				testResourceController.config.getVcpuRatio();
-//		System.out.println(config);
 		TestResource testResource = new TestResource();
 		Container container = null;
 		testResource.setCpuNumber(1);
 		//testResource.setMemoryLimit(256*1024*);
-		int requestCount = 7;
+		int requestCount = 8;
 		for(int i = 0; i < requestCount; ++i){
 			container = testResourceController.createContainer(testResource);
 			if(container != null){
 				System.out.println("success");
 				System.out.println("id: "+container.getId());
 				System.out.println("port: "+container.getPort());
+				testResourceController.remove(container);
 			}
 			else {
 				System.out.println("fail");
@@ -98,6 +98,7 @@ public class TestResourceController {
 			httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/create");
 			CreateContainer createContainer = new CreateContainer();
 			createContainer.setImage(config.getImageName());
+			createContainer.setCpuset(poolResponse);
 			httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
 			httpPost.setEntity(httpEntity);
 			container.setId(createContainerPost(httpPost));
@@ -115,14 +116,12 @@ public class TestResourceController {
 			httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
 			httpPost.setEntity(httpEntity);
 			int startResponse = startContainerPost(httpPost);
-			System.out.println(startResponse);
-			if(startResponse==0)
+			if(startResponse == 0)
 				return null;
 		}
 		
 		//set container's port
-		container.setPort(inspectContainer(container.getId()).getPort());
-		return container;
+		return inspectContainer(container.getId());
 	}
 	
 	/**
@@ -167,29 +166,64 @@ public class TestResourceController {
 	private Container inspectContainer(String id){
 		HttpGet httpGet = new HttpGet(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+id+"/json");
 		String result = null;
-		Container container = new Container();
 		InspectContainer inspectContainer = new InspectContainer();
 		try {
 			CloseableHttpResponse response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == INSPECT_CONTAINER_SUCCESS_CODE){
 				result = EntityUtils.toString(response.getEntity(), "utf-8");
 				inspectContainer = gson.fromJson(result, InspectContainer.class);
-				container.setId(inspectContainer.getId());
-				container.setPort(config.getDockerHostIp()+":"+inspectContainer.getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort());
+				inspectContainer.setPort(config.getDockerHostIp()+":"+inspectContainer.getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort());
 			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return container;
+		return inspectContainer;
 	}
 	/**
 	 * Remove Given Container
 	 * @param container the container to be removed
-	 * @return operation code
+	 * @return true if succeed
 	 */
-	public int remove(Container container){
-		return 0;
+	public boolean remove(Container container){
+		if(killContainerPost(container) == KILL_CONTAINER_SUCCESS_CODE
+				&& removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE){
+			ResourcePool.getInstance().releaseResource(container);
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private int killContainerPost(Container container){
+		HttpPost httpPost = new HttpPost(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
+				container.getId()+"/kill");
+		int statusCode = 0;
+		try {
+			CloseableHttpResponse response = httpClient.execute(httpPost);
+			statusCode = response.getStatusLine().getStatusCode();
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return statusCode;
+	}
+	
+	private int removeContainerPost(Container container){
+		HttpDelete httpDelete = new HttpDelete(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
+				container.getId());
+		int statusCode = 0;
+		try {
+			CloseableHttpResponse response = httpClient.execute(httpDelete);
+			statusCode = response.getStatusLine().getStatusCode();
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return statusCode;
 	}
 }
