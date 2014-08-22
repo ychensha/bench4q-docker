@@ -118,6 +118,14 @@ public class ResourcePool {
 		return response;
 	}
 	
+	public Resource requestCurrentStatus(){
+		Resource resource = new Resource();
+		resource.setAvalCpu(avalCpu);
+		resource.setFreeMem(freeMem);
+		
+		return resource;
+	}
+	
 	public static ResourcePool getInstance(){
 		return instance;
 	}

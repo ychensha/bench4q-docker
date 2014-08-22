@@ -35,14 +35,8 @@ public class TestResourceController {
 	/*test attribute*/
 	private long freeMemory = 2*1024*1024;
 	/**/
-	private Queue<Cpu> processor;
-	private int avalCpu = 0;
 	private ResourceControllerConfig config;
 	private static final String APIPROTOCOL_STRING = "http://";
-	private static final String PROCFS_MEMINFO = "/proc/meminfo";
-	private static final String MEMTOTAL_STRING = "MemTotal";
-	private static final String MEMFREE_STRING = "MemFree";
-	private static final Pattern PROCFS_MEMFILE_FORMAT = Pattern.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
 	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
 	private static final int START_CONTAINER_SUCCESS_CODE =204;
 	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
@@ -82,51 +76,13 @@ public class TestResourceController {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		avalCpu *= config.getVcpuRatio();
 	}
-	public Queue<Cpu> getProcessor() {
-		return processor;
-	}
-
-	public void setProcessor(Queue<Cpu> processor) {
-		this.processor = processor;
-	}
-
 	/**
 	 * 
 	 * @return current resource status
 	 */
 	public Resource getCurrentResourceStatus(){
-		Resource resource = new Resource();
-		BufferedReader bufferedReader = null;
-		Matcher mat = null;
-		
-		//read meminfo
-		try {
-			bufferedReader = new BufferedReader(new FileReader(PROCFS_MEMINFO));
-			String line = null;
-			while((line = bufferedReader.readLine()) != null){
-				mat = PROCFS_MEMFILE_FORMAT.matcher(line);
-				if(mat.find()){
-					if(mat.group(1).equals(MEMTOTAL_STRING))
-						resource.setMemFree(Long.parseLong(mat.group(2)));
-					else if(mat.group(1).equals(MEMFREE_STRING))
-						resource.setMemFree(Long.parseLong(mat.group(2)));
-				}
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		//close the reader
-		try {
-			bufferedReader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return resource;
+		return ResourcePool.getInstance().requestCurrentStatus();
 	}
 	
 	/**

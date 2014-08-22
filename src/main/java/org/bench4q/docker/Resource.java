@@ -3,19 +3,27 @@ package org.bench4q.docker;
 import java.util.List;
 
 public class Resource {
+	private long avalCpu;
 	private List<Container> containers;
-	private long memTotal;
-	private long memFree;
-	public long getMemTotal() {
-		return memTotal;
+	private long totalMem;
+	private long freeMem;
+
+	public long getTotalMem() {
+		return totalMem;
 	}
-	public void setMemTotal(long memTotal) {
-		this.memTotal = memTotal;
+	public void setTotalMem(long totalMem) {
+		this.totalMem = totalMem;
 	}
-	public long getMemFree() {
-		return memFree;
+	public long getFreeMem() {
+		return freeMem;
 	}
-	public void setMemFree(long memFree) {
-		this.memFree = memFree;
+	public void setFreeMem(long freeMem) {
+		this.freeMem = freeMem;
+	}
+	public long getAvalCpu() {
+		return avalCpu;
+	}
+	public void setAvalCpu(long avalCpu) {
+		this.avalCpu = avalCpu;
 	}
 }
