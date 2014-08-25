@@ -9,8 +9,8 @@ import com.google.gson.annotations.SerializedName;
 public class CreateContainer {
 	private String hostName;
 	private String user;
-	private String memory = "0";
-	private String memorySwap = "0";
+	private long memory;
+	private long memorySwap;
 	private String cpuset;
 	private boolean attachStdin = false;
 	private boolean attachStdout = false;
@@ -40,12 +40,19 @@ public class CreateContainer {
 		this.image = image;
 	}
 
+	public long getMemory() {
+		return memory;
+	}
 
-	public void setMemory(String memory) {
+	public void setMemory(long memory) {
 		this.memory = memory;
 	}
 
-	public void setMemorySwap(String memorySwap) {
+	public long getMemorySwap() {
+		return memorySwap;
+	}
+
+	public void setMemorySwap(long memorySwap) {
 		this.memorySwap = memorySwap;
 	}
 

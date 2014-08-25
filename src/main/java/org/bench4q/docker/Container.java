@@ -76,16 +76,15 @@ class CreateContainerResponse{
 public class Container {
 	private String ip;
 	private String port;
-	private Config config;
 	private String created;
 	private String hostnamePath;
 	private String hostsPath;
 	private String id;
 	private String path;
-	private State state;
 	private String image;
-	private NetworkSettings networkSettings;
+	
 	private HostConfig hostConfig;
+	private Config config;
 	
 	public String getId() {
 		return id;
@@ -114,6 +113,7 @@ public class Container {
 	public HostConfig getHostConfig() {
 		return hostConfig;
 	}
+
 	public void setHostConfig(HostConfig hostConfig) {
 		this.hostConfig = hostConfig;
 	}
@@ -172,26 +172,6 @@ class Config{
 	public void setMemory(int memory) {
 		this.memory = memory;
 	}
-}
-
-class Volumes{
-	
-}
-
-class State{
-	private boolean running;
-	private int pid;
-	private int exitCode;
-	private String startedAt;
-	private boolean ghost;
-}
-
-class NetworkSettings{
-	private String ipAddress;
-	private int ipPrefixLen;
-	private String gateway;
-	private String bridge;
-	private Map<String, String> portMapping;
 }
 
 class HostConfig{

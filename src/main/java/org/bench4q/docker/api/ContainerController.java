@@ -13,6 +13,17 @@ import org.springframework.web.bind.annotation.RequestMethod;
 public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
 	
+	public static void main(String[] args){
+		ContainerController containerController = new ContainerController();
+		RequiredResource requiredResource = new RequiredResource();
+		requiredResource.setCpu(1);
+		requiredResource.setMemroyKB(256*1024);//256MB
+		AgentCreated agent = containerController.createContainer(requiredResource);
+		System.out.println(agent.getId());
+		System.out.println(agent.getIp());
+		System.out.println(agent.getPort());
+	}
+	
 	@RequestMapping(value = "/currentresource", method = RequestMethod.POST)
 	public TestResource getCurrentResourceStatus(){
 		return setTestResource(controller.getCurrentResourceStatus());
@@ -23,7 +34,7 @@ public class ContainerController {
 		return setAgentCreated(controller.createContainer(setRequestResource(resource)));
 	}
 	
-	@RequestMapping(value="remove")
+	@RequestMapping(value="/remove")
 	public void removeContainer(AgentCreated agent){
 		controller.remove(getContainerByAgent(agent));
 	}
@@ -42,7 +53,7 @@ public class ContainerController {
 	private RequestResource setRequestResource(RequiredResource resource){
 		RequestResource requestResource = new RequestResource();
 		requestResource.setCpuNumber(resource.getCpu());
-		requestResource.setMemoryLimit(resource.getMemroyKB()*1024);
+		requestResource.setMemoryLimit(resource.getMemroyKB());
 		return requestResource;
 	}
 	
