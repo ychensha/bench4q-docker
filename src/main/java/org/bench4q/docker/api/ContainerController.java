@@ -7,24 +7,25 @@ import org.bench4q.share.master.test.resource.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
-@RequestMapping("/docker")
 public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
 	
 	public static void main(String[] args){
-		ContainerController containerController = new ContainerController();
-		RequiredResource requiredResource = new RequiredResource();
-		requiredResource.setCpu(1);
-		requiredResource.setMemroyKB(256*1024);//256MB
-		AgentCreated agent = containerController.createContainer(requiredResource);
-		System.out.println(agent.getId());
-		System.out.println(agent.getIp());
-		System.out.println(agent.getPort());
+//		ContainerController containerController = new ContainerController();
+//		RequiredResource requiredResource = new RequiredResource();
+//		requiredResource.setCpu(1);
+//		requiredResource.setMemroyKB(256*1024);//256MB
+//		AgentCreated agent = containerController.createContainer(requiredResource);
+//		System.out.println(agent.getId());
+//		System.out.println(agent.getIp());
+//		System.out.println(agent.getPort());
 	}
 	
-	@RequestMapping(value = "/currentresource", method = RequestMethod.POST)
+	@RequestMapping(value = "/currentresource", method = RequestMethod.GET)
+	@ResponseBody
 	public TestResource getCurrentResourceStatus(){
 		return setTestResource(controller.getCurrentResourceStatus());
 	}

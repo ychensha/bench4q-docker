@@ -96,7 +96,7 @@ public class TestResourceController {
 	 * @return current resource status
 	 */
 	public Resource getCurrentResourceStatus(){
-		return ResourcePool.getInstance().getCurrentStatus();
+		return ResourceNode.getInstance().getCurrentStatus();
 	}
 	
 	/**
@@ -104,7 +104,7 @@ public class TestResourceController {
 	 */
 	public Container createContainer(RequestResource resource){
 		Container container = new Container();
-		String poolResponse = ResourcePool.getInstance().requestResource(resource);
+		String poolResponse = ResourceNode.getInstance().requestResource(resource);
 		if(poolResponse != null){
 			ContainerConfig containerConfig = new ContainerConfig();
 			containerConfig.setCpuSet(poolResponse);
@@ -192,7 +192,7 @@ public class TestResourceController {
 	public boolean remove(Container container){
 		if(killContainerPost(container) == KILL_CONTAINER_SUCCESS_CODE
 				&& removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE){
-			ResourcePool.getInstance().releaseResource(container);
+			ResourceNode.getInstance().releaseResource(container);
 			return true;
 		}
 		else {
