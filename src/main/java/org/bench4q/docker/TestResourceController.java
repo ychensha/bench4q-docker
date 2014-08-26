@@ -5,8 +5,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.ParseException;
@@ -47,8 +49,10 @@ class ContainerConfig{
 
 public class TestResourceController {
 	/**/
-	private ResourceControllerConfig config;
-	private static final String APIPROTOCOL_STRING = "http://";
+	public static String IMAGE_NAME;
+	private static String DOCKER_HOST_NAME;
+	private static int DOCKER_HOST_PORT;
+	private static final String PROTOL_PREFIX = "http://";
 	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
 	private static final int START_CONTAINER_SUCCESS_CODE =204;
 	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
@@ -58,36 +62,16 @@ public class TestResourceController {
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
 	
 	public static void main(String[] args){
-		TestResourceController testResourceController = new TestResourceController();
-		RequestResource testResource = new RequestResource();
-		Container container = null;
-		testResource.setCpuNumber(1);
-		
-		testResourceController.getCurrentResourceStatus();
-		System.out.println("container number: " + testResourceController.getContainerList().size());
-		//testResource.setMemoryLimit(256*1024*);
-//		int requestCount = 8;
-//		for(int i = 0; i < requestCount; ++i){
-//			container = testResourceController.createContainer(testResource);
-//			if(container != null){
-//				System.out.println("success");
-//				System.out.println("id: "+container.getId());
-//				System.out.println("port: "+container.getPort());
-//				testResourceController.remove(container);
-//			}
-//			else {
-//				System.out.println("fail");
-//			}
-//		}
 	}
 	
 	public TestResourceController(){
-		XStream xStream = new XStream();
-		InputStream in = null;
+		Properties prop = new Properties();
 		try {
-			in = new FileInputStream("./config.xml");
-			config = (ResourceControllerConfig) xStream.fromXML(in);
-		} catch (FileNotFoundException e) {
+			prop.load(TestResourceController.class.getClassLoader().getResourceAsStream("docker-service.properties"));
+			DOCKER_HOST_NAME = prop.getProperty("DOCKER_HOST_NAME", "0.0.0.0");
+			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty("DOCKER_HOST_PORT", "2375"));
+			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/bench4q-agent-test");
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -127,7 +111,7 @@ public class TestResourceController {
 		List<String> ports = new ArrayList<String>();
 		ports.add("0");
 		startContainer.setPortbindings(ports);
-		HttpPost httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/" + id + "/start");
+		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+ "/containers/" + id + "/start");
 		HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		
@@ -139,9 +123,9 @@ public class TestResourceController {
 	
 	private String createContainerWithConfig(ContainerConfig containerConfig){
 		String id = null;
-		HttpPost httpPost = new HttpPost(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort() + "/containers/create");
+		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
-		createContainer.setImage(config.getImageName());
+		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCpuset(containerConfig.getCpuSet());
 		createContainer.setMemory(containerConfig.getMemoryKB()*1024);
 		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
@@ -166,14 +150,14 @@ public class TestResourceController {
 	 * @return container info
 	 */
 	public Container inspectContainer(String id){
-		HttpGet httpGet = new HttpGet(APIPROTOCOL_STRING + config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+id+"/json");
+		HttpGet httpGet = new HttpGet(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+"/containers/"+id+"/json");
 		InspectContainer inspectContainer = new InspectContainer();
 		try {
 			CloseableHttpResponse response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == INSPECT_CONTAINER_SUCCESS_CODE){
 				inspectContainer = gson.fromJson(EntityUtils.toString(response.getEntity(), "utf-8"), 
 						InspectContainer.class);
-				inspectContainer.setIp(config.getDockerHostIp());
+				inspectContainer.setIp(DOCKER_HOST_NAME);
 				inspectContainer.setPort(inspectContainer.getHostPort());
 			}
 		} catch (ClientProtocolException e) {
@@ -200,12 +184,12 @@ public class TestResourceController {
 		}
 	}
 	private int killContainerPost(Container container){
-		return getResponseStatusCode(new HttpPost(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
+		return getResponseStatusCode(new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+"/containers/"+
 					container.getId()+"/kill"));
 	}
 	
 	private int removeContainerPost(Container container){
-		return getResponseStatusCode(new HttpDelete(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
+		return getResponseStatusCode(new HttpDelete(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+"/containers/"+
 					container.getId()));
 	}
 	
@@ -222,7 +206,7 @@ public class TestResourceController {
 	
 	public List<Container> getContainerList(){
 		List<Container> result = new ArrayList<Container>();
-		HttpGet httpGet = new HttpGet(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/json");
+		HttpGet httpGet = new HttpGet(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+"/containers/json");
 		try {
 			String entity = EntityUtils.toString(httpClient.execute(httpGet).getEntity(), "utf-8");
 			result = gson.fromJson(entity, new TypeToken<List<Container>>(){}.getType());

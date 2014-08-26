@@ -6,12 +6,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -83,19 +85,7 @@ public class ResourceNode {
 		System.out.println(queue.poll().getUsage());
 	}
 	
-	private ResourceNode(){
-//		freeCpu = Runtime.getRuntime().availableProcessors();
-		ResourceControllerConfig config = new ResourceControllerConfig();
-		freeCpu = totalCpu = 0;
-		XStream xStream = new XStream();
-		InputStream in = null;
-		try {
-			in = new FileInputStream("./config.xml");
-			config = (ResourceControllerConfig) xStream.fromXML(in);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-
+	private void readSystemInfo(){
 		BufferedReader bufferedReader = null;
 		Matcher mat = null;
 		try {
@@ -136,7 +126,9 @@ public class ResourceNode {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+	}
+	
+	private void initCpuBlotter(){
 		processorQueue = new PriorityQueue<Cpu>(freeCpu, new Comparator<Cpu>(){
 			public int compare(Cpu c1, Cpu c2){
 				return c1.getUsage() - c2.getUsage();
@@ -150,9 +142,9 @@ public class ResourceNode {
 			processorQueue.add(cpu);
 			processorList.add(cpu);
 		}
-		freeCpu *= config.getVcpuRatio();
-		totalCpu = freeCpu;
-		
+	}
+	
+	private void checkAndUpdateCpuBlotter(){
 		TestResourceController testResourceController = new TestResourceController();
 		List<Container> runningContainerList = testResourceController.getContainerList();
 		for (Container container : runningContainerList) {
@@ -180,7 +172,37 @@ public class ResourceNode {
 				processorQueue.add(cpu);
 			}
 		}
+	}
+	
+	private int readProperties(){
+		int result = 3;
+		Properties prop = new Properties();
+		try {
+			prop.load(getInstance().getClass().getClassLoader().getResourceAsStream("docker-service.properties"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		result = Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
+		return result;
+	}
+	
+	private ResourceNode(){
+		freeCpu = totalCpu = 0;
+		Properties prop = new Properties();
+//		try {
+//			prop.load(TestResourceController.class.getResourceAsStream("docker-service.properties"));
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		readSystemInfo();
+		initCpuBlotter();
 		
+		
+		//freeCpu *= Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
+		freeCpu *= readProperties();
+		totalCpu = freeCpu;
+		
+		checkAndUpdateCpuBlotter();
 		System.out.println("resource pool init finished:\n" + "free cpu: "+freeCpu+"\nfree memory: "+freeMemory);
 	}
 	
