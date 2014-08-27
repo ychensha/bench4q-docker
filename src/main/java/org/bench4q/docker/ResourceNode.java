@@ -165,7 +165,6 @@ public class ResourceNode {
 		totalCpu = freeCpu;
 		
 		chenckAndUpdateBlotter();
-		System.out.println("resource pool init finished:\n" + "free cpu: "+freeCpu+"\nfree memory: "+freeMemory);
 	}
 	
 	/**

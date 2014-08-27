@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
+@RequestMapping("/docker")
 public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
 	
