@@ -40,7 +40,7 @@ class Cpu{
 }
 
 public class ResourceNode {
-	private static volatile ResourceNode instance;
+	private static final ResourceNode instance = new ResourceNode();
 	private int totalCpu;
 	private int freeCpu;
 	private long totalMemory;
@@ -53,9 +53,36 @@ public class ResourceNode {
 	private static final String MEMTOTAL_STRING = "MemTotal";
 	private static final String MEMFREE_STRING = "MemFree";
 	private static final Pattern PROCFS_MEMFILE_FORMAT = Pattern.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
-	private static final Pattern PROCFS_CPUFILE_FORMAT = Pattern.compile("processor");
+	private static final Pattern PROCFS_CPUFILE_FORMAT = Pattern.compile("^(processor*):[ \t]*([0-9]*)[ \t]");
 	
 	public static void main(String[] args){
+		Queue<Cpu> queue = new PriorityQueue<Cpu>(2, new Comparator<Cpu>() {
+			public int compare(Cpu c1, Cpu c2){
+				return c1.usage - c2.usage;
+			}
+		});
+		List<Cpu> list = new ArrayList<Cpu>();
+		
+		for(int i = 0; i < 2; ++i){
+			Cpu cpu = new Cpu();
+			cpu.setCpuId(i);
+			cpu.setUsage(0);
+			list.add(cpu);
+			queue.add(cpu);
+		}
+		
+		Cpu cpu = queue.poll();
+		cpu.setUsage(cpu.getUsage() + 1);
+		queue.add(cpu);
+		
+		for(int i = 0; i < 2; ++i)
+			System.out.println(list.get(i).getUsage());
+		
+		list.get(1).setUsage(list.get(1).getUsage() + 2);
+		
+		cpu = queue.poll();
+		System.out.println(cpu.getUsage());
+		System.out.println(queue.poll().getUsage());
 	}
 	
 	private void readSystemInfo(){
@@ -101,7 +128,7 @@ public class ResourceNode {
 		}
 	}
 	
-	private void initBlotter(){
+	private void initCpuBlotter(){
 		processorQueue = new PriorityQueue<Cpu>(freeCpu, new Comparator<Cpu>(){
 			public int compare(Cpu c1, Cpu c2){
 				return c1.getUsage() - c2.getUsage();
@@ -117,7 +144,7 @@ public class ResourceNode {
 		}
 	}
 	
-	private void chenckAndUpdateBlotter(){
+	private void checkAndUpdateCpuBlotter(){
 		TestResourceController testResourceController = new TestResourceController();
 		List<Container> runningContainerList = testResourceController.getContainerList();
 		for (Container container : runningContainerList) {
@@ -137,7 +164,7 @@ public class ResourceNode {
 				}
 			}
 			//update freeMem
-			freeMemory -= container.getConfig().getMemory()/1024;
+			freeMemory -= container.getConfig().getMemory();
 			//update the Priority Queue
 			int size = processorList.size();
 			for(int i = 0; i < size; ++i){
@@ -147,11 +174,11 @@ public class ResourceNode {
 		}
 	}
 	
-	private int getVCpuRatio(){
+	private int readProperties(){
 		int result = 3;
 		Properties prop = new Properties();
 		try {
-			prop.load(ResourceNode.class.getClassLoader().getResourceAsStream("docker-service.properties"));
+			prop.load(getInstance().getClass().getClassLoader().getResourceAsStream("docker-service.properties"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -161,12 +188,21 @@ public class ResourceNode {
 	
 	private ResourceNode(){
 		freeCpu = totalCpu = 0;
+		Properties prop = new Properties();
+//		try {
+//			prop.load(TestResourceController.class.getResourceAsStream("docker-service.properties"));
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 		readSystemInfo();
-		initBlotter();
-		freeCpu *= getVCpuRatio();
+		initCpuBlotter();
+		
+		
+		//freeCpu *= Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
+		freeCpu *= readProperties();
 		totalCpu = freeCpu;
 		
-		chenckAndUpdateBlotter();
+		checkAndUpdateCpuBlotter();
 		System.out.println("resource pool init finished:\n" + "free cpu: "+freeCpu+"\nfree memory: "+freeMemory);
 	}
 	
@@ -239,13 +275,7 @@ public class ResourceNode {
 		return resource;
 	}
 	
-	static ResourceNode getInstance(){
-		if(instance == null){
-			synchronized(ResourceNode.class){
-				if(instance == null)
-					instance = new ResourceNode();
-			}
-		}
+	public static ResourceNode getInstance(){
 		return instance;
 	}
 }
