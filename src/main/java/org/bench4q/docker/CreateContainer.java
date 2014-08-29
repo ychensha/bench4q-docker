@@ -19,7 +19,16 @@ public class CreateContainer {
 	private ExposedPort exposedPorts;
 	private String image;
 	private String ports;
+	private List<String> cmd;
 	
+	public List<String> getCmd() {
+		return cmd;
+	}
+
+	public void setCmd(List<String> cmd) {
+		this.cmd = cmd;
+	}
+
 	public String getPorts() {
 		return ports;
 	}

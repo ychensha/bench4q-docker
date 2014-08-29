@@ -175,12 +175,12 @@ class Config{
 }
 
 class HostConfig{
-	private List<String> binds;
+//	private List<String> binds;
 	private String containerIDFile;
 	private List<String> dns;
 	private List<String> dnsSearch;
 	private List<String> links;
-	private List<String> lxcConf;
+//	private List<String> lxcConf;
 	private String networkMode;
 	private PortBindings portBindings;
 	private boolean privileged;

@@ -1,18 +1,22 @@
 package org.bench4q.docker;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.gson.annotations.SerializedName;
 
 
 public class StartContainer {
 	private PortBindings portBindings;
-	private Map<String, String> lxcConf;
+	private List<LxcConf> lxcConf;
+	private boolean privileged;
 	
 	public StartContainer(){
-		lxcConf = new HashMap<String, String>();
+		lxcConf = new ArrayList<LxcConf>();
 	}
 	
 	public PortBindings getPortBindings() {
@@ -23,33 +27,44 @@ public class StartContainer {
 		portBindings = new PortBindings(ports);
 	}
 
-	public Map<String, String> getLxcConf() {
+	public List<LxcConf> getLxcConf() {
 		return lxcConf;
 	}
 
-	public void setLxcConf(Map<String, String> lxcConf) {
-		this.lxcConf = lxcConf;
+	public void setLxcConf(Map<String, String> map) {
+		Set<Map.Entry<String, String>> set = map.entrySet();
+		for(Iterator<Map.Entry<String, String>> it = set.iterator(); it.hasNext();){
+			LxcConf opts = new LxcConf();
+			Map.Entry<String, String> entry = (Map.Entry<String, String>) it.next();
+			opts.setKey(entry.getKey());
+			opts.setValue(entry.getValue());
+			
+			lxcConf.add(opts);
+		}
 	}
 
+	public boolean isPrivileged() {
+		return privileged;
+	}
+
+	public void setPrivileged(boolean privileged) {
+		this.privileged = privileged;
+	}
 }
 
 class LxcConf{
-	@SerializedName("lxc.cgroup.cpuset.cpus")
-	private String lxc_cgroup_cpuset_cpus;
-	@SerializedName("lxc.cgroup.memory.limit_in_bytes")
-	private long lxc_cgroup_memory_limit_in_bytes;
-	
-	public String getLxc_cgroup_cpuset_cpus() {
-		return lxc_cgroup_cpuset_cpus;
+	private String key;
+	private String value;
+	public String getKey() {
+		return key;
 	}
-	public void setLxc_cgroup_cpuset_cpus(String lxc_cgroup_cpuset_cpus) {
-		this.lxc_cgroup_cpuset_cpus = lxc_cgroup_cpuset_cpus;
+	public void setKey(String key) {
+		this.key = key;
 	}
-	public long getLxc_cgroup_memory_limit_in_bytes() {
-		return lxc_cgroup_memory_limit_in_bytes;
+	public String getValue() {
+		return value;
 	}
-	public void setLxc_cgroup_memory_limit_in_bytes(
-			long lxc_cgroup_memory_limit_in_bytes) {
-		this.lxc_cgroup_memory_limit_in_bytes = lxc_cgroup_memory_limit_in_bytes;
+	public void setValue(String value) {
+		this.value = value;
 	}
 }

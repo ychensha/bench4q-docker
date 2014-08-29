@@ -7,7 +7,9 @@ import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.http.HttpEntity;
@@ -23,6 +25,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.bench4q.share.master.test.resource.TestResource;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -49,6 +52,7 @@ class ContainerConfig{
 
 public class TestResourceController {
 	/**/
+	private static int CLASSID = 1;
 	public static String IMAGE_NAME;
 	private static String DOCKER_HOST_NAME;
 	private static int DOCKER_HOST_PORT;
@@ -58,10 +62,28 @@ public class TestResourceController {
 	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
 	private static final int KILL_CONTAINER_SUCCESS_CODE = 204;
 	private static final int REMOVE_CONTAINER_SUCCESS_CODE = 204;
+	
+	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
+	private static final String LXC_NET_CLS_CLASSID = "lxc.cgroup.net_cls.classid";
+	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
+	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
+	
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
 	
 	public static void main(String[] args){
+		TestResourceController controller = new TestResourceController();
+		RequestResource resource = new RequestResource();
+		resource.setCpuNumber(1);
+		resource.setMemoryLimit(256000);
+		
+		Container container = controller.createContainer(resource);
+		if(container != null){
+			System.out.println(container.getId());
+		}
+		else {
+			System.out.println("create fail");
+		}
 	}
 	
 	public TestResourceController(){
@@ -90,27 +112,55 @@ public class TestResourceController {
 		Container container = new Container();
 		String poolResponse = ResourceNode.getInstance().requestResource(resource);
 		if(poolResponse != null){
-			ContainerConfig containerConfig = new ContainerConfig();
-			containerConfig.setCpuSet(poolResponse);
-			containerConfig.setMemoryKB(resource.getMemoryLimit());
-			container.setId(createContainerWithConfig(containerConfig));
+			container.setId(createContainerWithoutConfig(resource));
 		}
 		else
 			return null;
 		
 		if(container.getId() != null){
-			if(startContainerById(container.getId()) == 0)
+			ContainerConfig containerConfig = new ContainerConfig();
+			containerConfig.setCpuSet(poolResponse);
+			containerConfig.setMemoryKB(resource.getMemoryLimit());
+			if(startContainerByIdAndConfig(container.getId(), containerConfig) == 0)
 				return null;
 		}
 		
 		return inspectContainer(container.getId());
 	}
 	
-	private int startContainerById(String id){
+	private Map<String, String> getContainerLxcConfig(ContainerConfig containerConfig){
+		Map<String, String> result = new HashMap<String, String>();
+		result.put(LXC_CPUSET_CPUS, containerConfig.getCpuSet());
+		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(containerConfig.getMemoryKB()*1024));
+		result.put(LXC_NET_CLS_CLASSID, "0x10002");
+		//the way to name is not good enough
+		result.put(LXC_NETWORK_VETH_PAIR, "veth" + CLASSID++);
+		if(CLASSID == 0)
+			CLASSID = 1;
+		return result;
+	}
+	
+	private void setContainerDownloadBandWidth(RequestResource resource){
+		if(resource.getDownloadBandWidthKBits() == 0)
+			return;
+		String command = "sudo tc qdisc add dev veth"+(CLASSID-1)+"root tbf rate "
+				+resource.getDownloadBandWidthKBits()+"Kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+		try {
+			Process process = Runtime.getRuntime().exec(command);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private int startContainerByIdAndConfig(String id, ContainerConfig containerConfig){
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
 		ports.add("0");
+		startContainer.setLxcConf(getContainerLxcConfig(containerConfig));
 		startContainer.setPortbindings(ports);
+		startContainer.setPrivileged(true);
+		System.out.println(gson.toJson(startContainer));
+		
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT+ "/containers/" + id + "/start");
 		HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
@@ -121,13 +171,26 @@ public class TestResourceController {
 			return 0;
 	}
 	
-	private String createContainerWithConfig(ContainerConfig containerConfig){
+	private String getTcCmd(long uploadSpeed){
+		return "tc qdisc add dev eth0 root tbf rate "+uploadSpeed
+				+"Kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+	}
+	
+	private String createContainerWithoutConfig(RequestResource resource){
 		String id = null;
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
+		List<String> cmds = new ArrayList<String>();
+		String startupCmd;
+		cmds.add("/bin/sh");
+		cmds.add("-c");
+		if(resource.getUploadBandWidthKBits() != 0)
+			startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar&&"+getTcCmd(resource.getUploadBandWidthKBits());
+		else
+			startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		cmds.add(startupCmd);
 		createContainer.setImage(IMAGE_NAME);
-		createContainer.setCpuset(containerConfig.getCpuSet());
-		createContainer.setMemory(containerConfig.getMemoryKB()*1024);
+		createContainer.setCmd(cmds);
 		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		
