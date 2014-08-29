@@ -32,6 +32,7 @@ public class ContainerController {
 	}
 	
 	@RequestMapping(value="/create")
+	@ResponseBody
 	public AgentCreated createContainer(RequiredResource resource){
 		return setAgentCreated(controller.createContainer(setRequestResource(resource)));
 	}
@@ -55,7 +56,7 @@ public class ContainerController {
 	private RequestResource setRequestResource(RequiredResource resource){
 		RequestResource requestResource = new RequestResource();
 		requestResource.setCpuNumber(resource.getCpu());
-		requestResource.setMemoryLimit(resource.getMemroyKB());
+		requestResource.setMemoryLimitKB(resource.getMemroyKB());
 		requestResource.setDownloadBandwidthKBit(resource.getDownloadBandwidthKbit());
 		requestResource.setUploadBandwidthKBit(resource.getUploadBandwidthKbit());
 		return requestResource;

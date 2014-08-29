@@ -2,7 +2,7 @@ package org.bench4q.docker;
 
 public class RequestResource {
 	private long cpuNumber;
-	private long memoryLimit;	//measured by Byte 
+	private long memoryLimitKB;	//measured by Byte 
 	private long uploadBandwidthKbit = 0;
 	private long downloadBandwidthKBit = 0;
 	public long getUploadBandwidthKBit() {
@@ -17,11 +17,11 @@ public class RequestResource {
 	public void setDownloadBandwidthKBit(long downloadBandwidthKBit) {
 		this.downloadBandwidthKBit = downloadBandwidthKBit;
 	}
-	public long getMemoryLimit() {
-		return memoryLimit;
+	public long getMemoryLimitKB() {
+		return memoryLimitKB;
 	}
-	public void setMemoryLimit(long memoryLimit) {
-		this.memoryLimit = memoryLimit;
+	public void setMemoryLimitKB(long memoryLimit) {
+		this.memoryLimitKB = memoryLimit;
 	}
 	public long getCpuNumber() {
 		return cpuNumber;

@@ -1,6 +1,5 @@
 package org.bench4q.docker;
 
-import java.util.List;
 
 public class Resource {
 	private int totalCpu;

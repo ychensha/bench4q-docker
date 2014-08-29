@@ -2,29 +2,11 @@ package org.bench4q.docker;
 
 import java.util.List;
 import java.util.Map;
-import java.io.IOException;
 import java.util.ArrayList;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.bench4q.docker.CreateContainer;
 
-
-/*
- * define inner class HostPort 
- */
 class HostPort{
 	private String hostIp;
 	private String hostPort;
@@ -76,11 +58,7 @@ class CreateContainerResponse{
 public class Container {
 	private String ip;
 	private String port;
-	private String created;
-	private String hostnamePath;
-	private String hostsPath;
 	private String id;
-	private String path;
 	private String image;
 	
 	private HostConfig hostConfig;
@@ -137,7 +115,6 @@ class Config{
 	private boolean attachStdin;
 	private boolean attachStdout;
 	private boolean attachStderr;
-	private Map<String, String> portSpecs;
 	private boolean tty;
 	private boolean openStdin;
 	private boolean stdinOnce;
@@ -175,16 +152,8 @@ class Config{
 }
 
 class HostConfig{
-//	private List<String> binds;
-	private String containerIDFile;
-	private List<String> dns;
-	private List<String> dnsSearch;
-	private List<String> links;
-//	private List<String> lxcConf;
-	private String networkMode;
 	private PortBindings portBindings;
 	private boolean privileged;
-	private String volumesFrom;
 	public PortBindings getPortBindings() {
 		return portBindings;
 	}

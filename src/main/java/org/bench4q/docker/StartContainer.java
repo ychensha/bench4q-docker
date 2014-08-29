@@ -1,14 +1,8 @@
 package org.bench4q.docker;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
-import com.google.gson.annotations.SerializedName;
-
 
 public class StartContainer {
 	private PortBindings portBindings;
@@ -32,13 +26,10 @@ public class StartContainer {
 	}
 
 	public void setLxcConf(Map<String, String> map) {
-		Set<Map.Entry<String, String>> set = map.entrySet();
-		for(Iterator<Map.Entry<String, String>> it = set.iterator(); it.hasNext();){
+		for(Map.Entry<String, String> entry : map.entrySet()){
 			LxcConf opts = new LxcConf();
-			Map.Entry<String, String> entry = (Map.Entry<String, String>) it.next();
 			opts.setKey(entry.getKey());
 			opts.setValue(entry.getValue());
-			
 			lxcConf.add(opts);
 		}
 	}

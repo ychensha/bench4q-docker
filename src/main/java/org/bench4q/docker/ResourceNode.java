@@ -185,7 +185,7 @@ public class ResourceNode {
 	 */
 	public String requestResource(RequestResource resource) {
 		long testCpu = resource.getCpuNumber();
-		long testMem = resource.getMemoryLimit();
+		long testMem = resource.getMemoryLimitKB();
 		String response = null;
 		lock.writeLock().lock();
 		try {
@@ -246,5 +246,4 @@ public class ResourceNode {
 		}
 		return resource;
 	}
-
 }

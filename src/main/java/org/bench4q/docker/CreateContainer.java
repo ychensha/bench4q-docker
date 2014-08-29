@@ -117,8 +117,4 @@ public class CreateContainer {
 			}
 		}
 	}
-	
-	public static void main(){
-		
-	}
 }
