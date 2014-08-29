@@ -56,6 +56,8 @@ public class ContainerController {
 		RequestResource requestResource = new RequestResource();
 		requestResource.setCpuNumber(resource.getCpu());
 		requestResource.setMemoryLimit(resource.getMemroyKB());
+		requestResource.setDownloadBandwidthKBit(resource.getDownloadBandwidthKbit());
+		requestResource.setUploadBandwidthKBit(resource.getUploadBandwidthKbit());
 		return requestResource;
 	}
 	

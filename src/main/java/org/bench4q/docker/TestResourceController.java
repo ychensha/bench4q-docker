@@ -56,6 +56,7 @@ public class TestResourceController {
 	public static String IMAGE_NAME;
 	private static String DOCKER_HOST_NAME;
 	private static int DOCKER_HOST_PORT;
+	private static String DOCKER_HOST_PASSWORD;
 	private static final String PROTOL_PREFIX = "http://";
 	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
 	private static final int START_CONTAINER_SUCCESS_CODE =204;
@@ -67,6 +68,8 @@ public class TestResourceController {
 	private static final String LXC_NET_CLS_CLASSID = "lxc.cgroup.net_cls.classid";
 	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
+	
+	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
 	
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
@@ -89,10 +92,11 @@ public class TestResourceController {
 	public TestResourceController(){
 		Properties prop = new Properties();
 		try {
-			prop.load(TestResourceController.class.getClassLoader().getResourceAsStream("docker-service.properties"));
+			prop.load(TestResourceController.class.getClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME));
 			DOCKER_HOST_NAME = prop.getProperty("DOCKER_HOST_NAME", "0.0.0.0");
 			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty("DOCKER_HOST_PORT", "2375"));
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/bench4q-agent-test");
+			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -112,7 +116,7 @@ public class TestResourceController {
 		Container container = new Container();
 		String poolResponse = ResourceNode.getInstance().requestResource(resource);
 		if(poolResponse != null){
-			container.setId(createContainerWithoutConfig(resource));
+			container.setId(createContainerAndSetUploadBandwidth(resource));
 		}
 		else
 			return null;
@@ -124,7 +128,7 @@ public class TestResourceController {
 			if(startContainerByIdAndConfig(container.getId(), containerConfig) == 0)
 				return null;
 		}
-		
+		setContainerDownloadBandWidth(resource);
 		return inspectContainer(container.getId());
 	}
 	
@@ -141,10 +145,14 @@ public class TestResourceController {
 	}
 	
 	private void setContainerDownloadBandWidth(RequestResource resource){
-		if(resource.getDownloadBandWidthKBits() == 0)
+		if(resource.getDownloadBandwidthKBit() == 0)
 			return;
 		String command = "sudo tc qdisc add dev veth"+(CLASSID-1)+"root tbf rate "
-				+resource.getDownloadBandWidthKBits()+"Kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+				+resource.getDownloadBandwidthKBit()+"Kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+		if(DOCKER_HOST_PASSWORD != null){
+			String psw = "echo " + DOCKER_HOST_PASSWORD +" | ";
+			command += psw;
+		}
 		try {
 			Process process = Runtime.getRuntime().exec(command);
 		} catch (IOException e) {
@@ -176,18 +184,16 @@ public class TestResourceController {
 				+"Kbit latency 50ms burst 10000 mpu 64 mtu 1500";
 	}
 	
-	private String createContainerWithoutConfig(RequestResource resource){
+	private String createContainerAndSetUploadBandwidth(RequestResource resource){
 		String id = null;
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
 		List<String> cmds = new ArrayList<String>();
-		String startupCmd;
+		String startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
 		cmds.add("/bin/sh");
 		cmds.add("-c");
-		if(resource.getUploadBandWidthKBits() != 0)
-			startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar&&"+getTcCmd(resource.getUploadBandWidthKBits());
-		else
-			startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		if(resource.getUploadBandwidthKBit() != 0)
+			startupCmd += "&&"+getTcCmd(resource.getUploadBandwidthKBit());
 		cmds.add(startupCmd);
 		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCmd(cmds);
@@ -280,50 +286,6 @@ public class TestResourceController {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 		return result;
 	}
-	
-//	public boolean remove(String id){
-//		if(killContainerPost(id) == KILL_CONTAINER_SUCCESS_CODE
-//				&& removeContainerPost(id) == REMOVE_CONTAINER_SUCCESS_CODE){
-//			ResourcePool.getInstance().releaseResource(id);
-//			return true;
-//		}
-//		else {
-//			return false;
-//		}
-//	}
-//	
-//	private int killContainerPost(String id){
-//		HttpPost httpPost = new HttpPost(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
-//				id+"/kill");
-//		int statusCode = 0;
-//		try {
-//			CloseableHttpResponse response = httpClient.execute(httpPost);
-//			statusCode = response.getStatusLine().getStatusCode();
-//		} catch (ClientProtocolException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//		return statusCode;
-//	}
-//	
-//	private int removeContainerPost(String id){
-//		HttpDelete httpDelete = new HttpDelete(APIPROTOCOL_STRING+config.getDockerHostIp()+":"+config.getDockerHostPort()+"/containers/"+
-//				id);
-//		int statusCode = 0;
-//		try {
-//			CloseableHttpResponse response = httpClient.execute(httpDelete);
-//			statusCode = response.getStatusLine().getStatusCode();
-//		} catch (ClientProtocolException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//		return statusCode;
-//	}
-	
-
 }

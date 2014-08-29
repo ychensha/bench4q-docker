@@ -60,9 +60,9 @@ public class ResourceNode {
 
 	private ResourceNode() {
 		freeCpu = totalCpu = 0;
-		freeCpu *= getVCpuRatio();
 		readSystemInfo();
 		initBlotter();
+		freeCpu *= getVCpuRatio();
 		totalCpu = freeCpu;
 		chenckAndUpdateBlotter();
 	}
@@ -170,10 +170,10 @@ public class ResourceNode {
 		try {
 			prop.load(ResourceNode.class.getClassLoader().getResourceAsStream(
 					"docker-service.properties"));
+			result = Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		result = Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
 		return result;
 	}
 
