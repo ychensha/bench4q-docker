@@ -3,9 +3,10 @@ package org.bench4q.docker;
 import java.util.Map;
 
 public class InspectContainer extends Container {
+	private NetworkSettings networkSettings;
 	public String getHostPort(){
 		try{
-			return getHostConfig().getPortBindings().getHostPortList().get(0).getHostPort();
+			return networkSettings.getPorts().getHostPortList().get(0).getHostPort();
 		} catch(NullPointerException e){
 			return "";
 		}
@@ -25,10 +26,14 @@ class State{
 }
 
 class NetworkSettings{
-	private String ipAddress;
-	private int ipPrefixLen;
-	private String gateway;
-	private String bridge;
-	private Map<String, String> portMapping;
+	private PortBindings ports;
+
+	public PortBindings getPorts() {
+		return ports;
+	}
+
+	public void setPorts(PortBindings ports) {
+		this.ports = ports;
+	}
 }
 

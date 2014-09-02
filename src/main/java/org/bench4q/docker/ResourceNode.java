@@ -184,6 +184,9 @@ public class ResourceNode {
 	 * @return NOW is CPU setting
 	 */
 	public String requestResource(RequestResource resource) {
+		if(resource == null || resource.getCpuNumber() == 0)
+			return null;
+		
 		long testCpu = resource.getCpuNumber();
 		long testMem = resource.getMemoryLimitKB();
 		String response = null;
@@ -199,6 +202,7 @@ public class ResourceNode {
 				}
 				builder.deleteCharAt(builder.length() - 1);
 				freeCpu -= testCpu;
+				freeMemory -= testMem;
 				response = builder.toString();
 			}
 		} finally {
