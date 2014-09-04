@@ -1,6 +1,5 @@
 package org.bench4q.docker;
 
-import java.util.Map;
 
 public class InspectContainer extends Container {
 	private NetworkSettings networkSettings;

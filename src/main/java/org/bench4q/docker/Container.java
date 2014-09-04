@@ -28,10 +28,15 @@ class PortBindings{
 	@SerializedName("6565/tcp")
 	private List<HostPort> hostPortList;
 	
+	@SerializedName("8080/tcp")
+	private List<HostPort> monitorPort;
+	
 	public PortBindings(List<String> ports){
 		hostPortList = new ArrayList<HostPort>();
+		monitorPort = new ArrayList<HostPort>();
 		for (String port : ports) {
 			hostPortList.add(new HostPort(port));
+			monitorPort.add(new HostPort(port));
 		}
 	}
 
@@ -41,6 +46,14 @@ class PortBindings{
 
 	public void setHostPortList(List<HostPort> hostPortList) {
 		this.hostPortList = hostPortList;
+	}
+
+	public List<HostPort> getMonitorPort() {
+		return monitorPort;
+	}
+
+	public void setMonitorPort(List<HostPort> monitorPort) {
+		this.monitorPort = monitorPort;
 	}
 }
 class CreateContainerResponse{

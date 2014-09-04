@@ -55,6 +55,7 @@ public class TestResourceController {
 		RequestResource resource = new RequestResource();
 		resource.setCpuNumber(1);
 		resource.setMemoryLimitKB(256000);
+		resource.setUploadBandwidthKBit(200000);
 		
 		Container container = controller.createContainer(resource);
 		if(container != null){
@@ -162,7 +163,7 @@ public class TestResourceController {
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
 		List<String> cmds = new ArrayList<String>();
-		String startupCmd = "java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		String startupCmd = "/opt/tomcat7/bin/startup.sh&&java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
 		cmds.add("/bin/sh");
 		cmds.add("-c");
 		if(resource.getUploadBandwidthKBit() != 0)

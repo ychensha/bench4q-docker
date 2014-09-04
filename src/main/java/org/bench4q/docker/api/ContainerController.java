@@ -1,16 +1,10 @@
 package org.bench4q.docker.api;
 
-import java.io.IOException;
-
-import javax.xml.bind.JAXBException;
 
 import org.bench4q.docker.Container;
 import org.bench4q.docker.RequestResource;
 import org.bench4q.docker.Resource;
 import org.bench4q.docker.TestResourceController;
-import org.bench4q.share.communication.HttpRequester;
-import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,50 +19,57 @@ public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
 
 	public static void main(String[] args) {
-		RequiredResource requiredResource = new RequiredResource();
-		requiredResource.setCpu(2);
-		requiredResource.setMemroyKB(512 * 1024);// 256MB
-		HttpRequester httpRequester = new HttpRequester();
-		try {
-			HttpResponse response = httpRequester.sendPostXml(
-					"localhost:5656/docker/create", MarshalHelper.marshal(
-							RequiredResource.class, requiredResource), null);
-			Agent agent = (Agent) MarshalHelper.unmarshal(Agent.class,
-					response.getContent());
-			if (agent != null) {
-				System.out.println(agent.getId());
-				System.out.println(agent.getHostName());
-				System.out.println(agent.getPort());
-			} else {
-				System.out.println("fail");
-			}
-		} catch (JAXBException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+//		RequiredResource requiredResource = new RequiredResource();
+//		requiredResource.setCpu(2);
+//		requiredResource.setMemroyKB(512 * 1024);// 256MB
+//		HttpRequester httpRequester = new HttpRequester();
+//		try {
+//			HttpResponse response = httpRequester.sendPostXml(
+//					"localhost:5656/docker/create", MarshalHelper.marshal(
+//							RequiredResource.class, requiredResource), null);
+//			Agent agent = (Agent) MarshalHelper.unmarshal(Agent.class,
+//					response.getContent());
+//			if (agent != null) {
+//				System.out.println(agent.getId());
+//				System.out.println(agent.getHostName());
+//				System.out.println(agent.getPort());
+//			} else {
+//				System.out.println("fail");
+//			}
+//		} catch (JAXBException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	@RequestMapping(value = "/currentresource", method = RequestMethod.GET)
 	@ResponseBody
-	public TestResource getCurrentResourceStatus() {
+	public TestResourceModel getCurrentResourceStatus() {
 		return setTestResource(controller.getCurrentResourceStatus());
 	}
 
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
 	@ResponseBody
-	public Agent createContainer(@RequestBody RequiredResource resource) {
-		return setAgentCreated(controller
+	public AgentModel createContainer(@RequestBody ResourceInfo resource) {
+		AgentModel result = setAgentCreated(controller
 				.createContainer(setRequestResource(resource)));
+		result.setResourceInfo(resource);
+		
+		return result;
 	}
 
 	@RequestMapping(value = "/remove")
-	public void removeContainer(@RequestParam Agent agent) {
-		controller.remove(getContainerByAgent(agent));
+	@ResponseBody
+	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
+		MainFrameResponseModel result = new MainFrameResponseModel();
+		result.setSuccess(controller.remove(getContainerByAgent(agent)));
+		
+		return result;
 	}
 
-	private TestResource setTestResource(Resource resource) {
-		TestResource testResource = new TestResource();
+	private TestResourceModel setTestResource(Resource resource) {
+		TestResourceModel testResource = new TestResourceModel();
 		testResource.setTotalCpu(resource.getTotalCpu());
 		testResource.setFreeCpu(resource.getFreeCpu());
 		testResource.setUsedCpu(resource.getUsedCpu());
@@ -78,7 +79,7 @@ public class ContainerController {
 		return testResource;
 	}
 
-	private RequestResource setRequestResource(RequiredResource resource) {
+	private RequestResource setRequestResource(ResourceInfo resource) {
 		RequestResource requestResource = new RequestResource();
 		requestResource.setCpuNumber(resource.getCpu());
 		requestResource.setMemoryLimitKB(resource.getMemroyKB());
@@ -89,18 +90,18 @@ public class ContainerController {
 		return requestResource;
 	}
 
-	private Agent setAgentCreated(Container container) {
+	private AgentModel setAgentCreated(Container container) {
 		if(container == null)
 			return null;
 		
-		Agent agent = new Agent();
+		AgentModel agent = new AgentModel();
 		agent.setHostName(container.getIp());
 		agent.setPort(Integer.valueOf(container.getPort()));
 		agent.setId(container.getId());
 		return agent;
 	}
 
-	private Container getContainerByAgent(Agent agent) {
+	private Container getContainerByAgent(AgentModel agent) {
 		return controller.inspectContainer(agent.getId());
 	}
 }
