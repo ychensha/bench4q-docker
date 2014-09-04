@@ -49,6 +49,7 @@ public class ResourceNode {
 	private Queue<Cpu> processorQueue;
 	private List<Cpu> processorList;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
+	private static int CPU_CFS_PERIOD_US = 100000; 
 	private static final String PROCFS_MEMINFO = "/proc/meminfo";
 	private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
 	private static final String MEMTOTAL_STRING = "MemTotal";
@@ -210,6 +211,32 @@ public class ResourceNode {
 		}
 
 		return response;
+	}
+	
+	public int requestResourceReturnQuota(RequestResource resource){
+		int result = 0;
+		if(resource == null || resource.getCpuNumber() == 0)
+			return result;
+		
+		long testCpu = resource.getCpuNumber();
+		long testMem = resource.getMemoryLimitKB();
+		lock.writeLock().lock();
+		try {
+			if (freeCpu >= testCpu && freeMemory >= testMem) {
+				for (int i = 0; i < testCpu; ++i) {
+					Cpu cpu = processorQueue.poll();
+					cpu.setUsage(cpu.getUsage() + 1);
+					processorQueue.add(cpu);
+				}
+				freeCpu -= testCpu;
+				freeMemory -= testMem;
+				result = (int)testCpu/getVCpuRatio()*CPU_CFS_PERIOD_US;
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
+
+		return result;
 	}
 
 	public void releaseResource(Container container) {

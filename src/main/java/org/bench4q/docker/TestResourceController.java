@@ -44,6 +44,7 @@ public class TestResourceController {
 	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
 	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
+	private static final String LXC_CPU_QUOTA = "lxc.cpu.cfs_quota_us";
 	
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
 	
@@ -100,12 +101,92 @@ public class TestResourceController {
 			return null;
 		
 		if(container.getId() != null){
-			if(startContainerByIdAndSetLxcConfig(container.getId(), resource, poolResponse) == 0)
+			if(startContainerByIdAndSetLxcConfig(container.getId(), resource, poolResponse) 
+					== 0)
 				return null;
 		}
 		setContainerDownloadBandWidth(resource);
 		return inspectContainer(container.getId());
 	}
+	
+	public Container createContainerAndSetCpuQuota(RequestResource resource){
+		Container container = new Container();
+		int poolResponse = ResourceNode.getInstance().requestResourceReturnQuota(resource);
+		if(poolResponse != 0){
+			container.setId(createContainerAndSetUploadBandwidth(resource));
+		}
+		else {
+			return null;
+		}
+		if(container.getId() != null){
+			if(startContainerByIdAndSetLxcConfigWithQuota(
+					container.getId(), resource) == 0){
+				return null;
+			}
+		}
+		setContainerDownloadBandWidth(resource);
+		return inspectContainer(container.getId());
+	}
+	
+	private String createContainerAndSetUploadBandwidth(RequestResource resource){
+		String id = null;
+		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
+		CreateContainer createContainer = new CreateContainer();
+		List<String> cmds = new ArrayList<String>();
+		String startupCmd = "/opt/tomcat7/bin/startup.sh&&java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		cmds.add("/bin/sh");
+		cmds.add("-c");
+		if(resource.getUploadBandwidthKBit() != 0)
+			startupCmd += "&&"+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+		cmds.add(startupCmd);
+		createContainer.setImage(IMAGE_NAME);
+		createContainer.setCmd(cmds);
+		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
+		httpPost.setEntity(httpEntity);
+		try {
+			CloseableHttpResponse response = httpClient.execute(httpPost);
+			if(response.getStatusLine().getStatusCode() == CREATE_CONTAINER_SUCCESS_CODE){
+				id = EntityUtils.toString(response.getEntity(), "utf-8");
+				CreateContainerResponse createContainerResponse = gson.fromJson(id, CreateContainerResponse.class);
+				id = createContainerResponse.getId();
+			}
+		} catch (ClientProtocolException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return id;
+	}
+	
+	private int startContainerByIdAndSetLxcConfigWithQuota(String containerId, RequestResource resource){
+		StartContainer startContainer = new StartContainer();
+		List<String> ports = new ArrayList<String>();
+		ports.add("0");
+		startContainer.setLxcConf(getContainerLxcConfigWithQuota(resource));
+		startContainer.setPortbindings(ports);
+		startContainer.setPrivileged(true);
+		
+		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
+				+"/containers/" + containerId + "/start");
+		HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
+		httpPost.setEntity(httpEntity);
+		
+		if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
+			return 1;
+		else
+			return 0;
+	}
+	
+	private Map<String, String> getContainerLxcConfigWithQuota(RequestResource resource){
+		Map<String, String> result = new HashMap<String, String>();
+		result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuNumber()));
+		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
+		//the way to name is not good enough
+		result.put(LXC_NETWORK_VETH_PAIR, "veth" + CLASSID++);
+		if(CLASSID == 0)
+			CLASSID = 1;
+		return result;
+	} 
 	
 	private Map<String, String> getContainerLxcConfig(RequestResource resource, String cpuset){
 		Map<String, String> result = new HashMap<String, String>();
