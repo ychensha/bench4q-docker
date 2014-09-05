@@ -28,7 +28,7 @@ class PortBindings{
 	@SerializedName("6565/tcp")
 	private List<HostPort> hostPortList;
 	
-	@SerializedName("8080/tcp")
+	@SerializedName("5556/tcp")
 	private List<HostPort> monitorPort;
 	
 	public PortBindings(List<String> ports){
@@ -73,10 +73,20 @@ public class Container {
 	private String port;
 	private String id;
 	private String image;
+	private String monitorPort;
 	
 	private HostConfig hostConfig;
 	private Config config;
 	
+	
+	public String getMonitorPort() {
+		return monitorPort;
+	}
+
+	public void setMonitorPort(String monitorPort) {
+		this.monitorPort = monitorPort;
+	}
+
 	public String getId() {
 		return id;
 	}

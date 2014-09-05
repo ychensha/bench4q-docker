@@ -41,8 +41,8 @@ class Cpu {
 }
 
 public class ResourceNode {
-	private static volatile ResourceNode instance = new ResourceNode();
 	private int totalCpu;
+	
 	private int freeCpu;
 	private long totalMemory;
 	private long freeMemory;
@@ -58,6 +58,7 @@ public class ResourceNode {
 			.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
 	private static final Pattern PROCFS_CPUFILE_FORMAT = Pattern
 			.compile("processor");
+	private static volatile ResourceNode instance = new ResourceNode();
 
 	private ResourceNode() {
 		freeCpu = totalCpu = 0;
@@ -77,7 +78,7 @@ public class ResourceNode {
 
 	private void readSystemInfo() {
 		BufferedReader bufferedReader = null;
-		Matcher mat = null;
+		Matcher mat = PROCFS_MEMFILE_FORMAT.matcher("one line ");
 		try {
 			bufferedReader = new BufferedReader(new FileReader(PROCFS_MEMINFO));
 			String line = null;
@@ -230,7 +231,7 @@ public class ResourceNode {
 				}
 				freeCpu -= testCpu;
 				freeMemory -= testMem;
-				result = (int)testCpu/getVCpuRatio()*CPU_CFS_PERIOD_US;
+				result = (int)testCpu*CPU_CFS_PERIOD_US/getVCpuRatio();
 			}
 		} finally {
 			lock.writeLock().unlock();

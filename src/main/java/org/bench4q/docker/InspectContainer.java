@@ -10,6 +10,14 @@ public class InspectContainer extends Container {
 			return "";
 		}
 	}
+	
+	public String getMonitorPort(){
+		try{
+			return networkSettings.getPorts().getMonitorPort().get(0).getHostPort();
+		} catch(NullPointerException e){
+			return "";
+		}
+	}
 }
 
 class Volumes{

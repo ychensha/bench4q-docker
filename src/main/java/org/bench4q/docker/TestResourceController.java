@@ -44,7 +44,7 @@ public class TestResourceController {
 	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
 	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
-	private static final String LXC_CPU_QUOTA = "lxc.cpu.cfs_quota_us";
+	private static final String LXC_CPU_QUOTA = "lxc.cgroup.cpu.cfs_quota_us";
 	
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
 	
@@ -58,7 +58,8 @@ public class TestResourceController {
 		resource.setMemoryLimitKB(256000);
 		resource.setUploadBandwidthKBit(200000);
 		
-		Container container = controller.createContainer(resource);
+		System.out.println(ResourceNode.getInstance().getCurrentStatus().getTotalCpu());
+		Container container = controller.createContainerAndSetCpuQuota(resource);
 		if(container != null){
 			System.out.println(container.getId());
 		}
@@ -114,6 +115,7 @@ public class TestResourceController {
 		int poolResponse = ResourceNode.getInstance().requestResourceReturnQuota(resource);
 		if(poolResponse != 0){
 			container.setId(createContainerAndSetUploadBandwidth(resource));
+			resource.setCpuNumber(poolResponse);
 		}
 		else {
 			return null;
@@ -133,11 +135,12 @@ public class TestResourceController {
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
 		List<String> cmds = new ArrayList<String>();
-		String startupCmd = "/opt/tomcat7/bin/startup.sh&&java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		String startupCmd = "";
 		cmds.add("/bin/sh");
 		cmds.add("-c");
+		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
 		if(resource.getUploadBandwidthKBit() != 0)
-			startupCmd += "&&"+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+			startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
 		cmds.add(startupCmd);
 		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCmd(cmds);
@@ -161,7 +164,7 @@ public class TestResourceController {
 	private int startContainerByIdAndSetLxcConfigWithQuota(String containerId, RequestResource resource){
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
-		ports.add("0");
+		ports.add("");
 		startContainer.setLxcConf(getContainerLxcConfigWithQuota(resource));
 		startContainer.setPortbindings(ports);
 		startContainer.setPrivileged(true);
@@ -284,6 +287,7 @@ public class TestResourceController {
 						InspectContainer.class);
 				inspectContainer.setIp(DOCKER_HOST_NAME);
 				inspectContainer.setPort(inspectContainer.getHostPort());
+				inspectContainer.setMonitorPort(inspectContainer.getMonitorPort());
 			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
