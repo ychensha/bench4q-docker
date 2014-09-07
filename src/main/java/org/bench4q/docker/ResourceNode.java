@@ -251,7 +251,7 @@ public class ResourceNode {
 				freeCpu++;
 			}
 			// update freeMem
-			freeMemory += container.getConfig().getMemory();
+			freeMemory += (container.getConfig().getMemory()/1024);
 			// update the Priority Queue
 			int size = processorList.size();
 			for (int i = 0; i < size; ++i) {
