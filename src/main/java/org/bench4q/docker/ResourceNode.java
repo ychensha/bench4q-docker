@@ -278,4 +278,11 @@ public class ResourceNode {
 		}
 		return resource;
 	}
+	
+	public int getCpuQuota(String cpuSet){
+		int result = 0;
+		String cpus[] = cpuSet.split(",");
+		result = (int) cpus.length * CPU_CFS_PERIOD_US / getVCpuRatio();
+		return result;
+	}
 }

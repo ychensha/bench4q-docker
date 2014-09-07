@@ -112,10 +112,11 @@ public class TestResourceController {
 	
 	public Container createContainerAndSetCpuQuota(RequestResource resource){
 		Container container = new Container();
-		int poolResponse = ResourceNode.getInstance().requestResourceReturnQuota(resource);
-		if(poolResponse != 0){
-			container.setId(createContainerAndSetUploadBandwidth(resource));
-			resource.setCpuNumber(poolResponse);
+		String poolResponse = ResourceNode.getInstance().requestResource(resource);
+		if(poolResponse != null){
+			String[] cpus = poolResponse.split(",");
+			container.setId(createContainerAndSetUploadBandwidth(resource, poolResponse));
+			resource.setCpuNumber(ResourceNode.getInstance().getCpuQuota(poolResponse));
 		}
 		else {
 			return null;
@@ -129,37 +130,37 @@ public class TestResourceController {
 		setContainerDownloadBandWidth(resource);
 		return inspectContainer(container.getId());
 	}
-	
-	private String createContainerAndSetUploadBandwidth(RequestResource resource){
-		String id = null;
-		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
-		CreateContainer createContainer = new CreateContainer();
-		List<String> cmds = new ArrayList<String>();
-		String startupCmd = "";
-		cmds.add("/bin/sh");
-		cmds.add("-c");
-		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-		if(resource.getUploadBandwidthKBit() != 0)
-			startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
-		cmds.add(startupCmd);
-		createContainer.setImage(IMAGE_NAME);
-		createContainer.setCmd(cmds);
-		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
-		httpPost.setEntity(httpEntity);
-		try {
-			CloseableHttpResponse response = httpClient.execute(httpPost);
-			if(response.getStatusLine().getStatusCode() == CREATE_CONTAINER_SUCCESS_CODE){
-				id = EntityUtils.toString(response.getEntity(), "utf-8");
-				CreateContainerResponse createContainerResponse = gson.fromJson(id, CreateContainerResponse.class);
-				id = createContainerResponse.getId();
-			}
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return id;
-	}
+//	
+//	private String createContainerAndSetUploadBandwidth(RequestResource resource){
+//		String id = null;
+//		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
+//		CreateContainer createContainer = new CreateContainer();
+//		List<String> cmds = new ArrayList<String>();
+//		String startupCmd = "";
+//		cmds.add("/bin/sh");
+//		cmds.add("-c");
+//		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
+//		if(resource.getUploadBandwidthKBit() != 0)
+//			startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+//		cmds.add(startupCmd);
+//		createContainer.setImage(IMAGE_NAME);
+//		createContainer.setCmd(cmds);
+//		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
+//		httpPost.setEntity(httpEntity);
+//		try {
+//			CloseableHttpResponse response = httpClient.execute(httpPost);
+//			if(response.getStatusLine().getStatusCode() == CREATE_CONTAINER_SUCCESS_CODE){
+//				id = EntityUtils.toString(response.getEntity(), "utf-8");
+//				CreateContainerResponse createContainerResponse = gson.fromJson(id, CreateContainerResponse.class);
+//				id = createContainerResponse.getId();
+//			}
+//		} catch (ClientProtocolException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		return id;
+//	}
 	
 	private int startContainerByIdAndSetLxcConfigWithQuota(String containerId, RequestResource resource){
 		StartContainer startContainer = new StartContainer();
@@ -247,16 +248,16 @@ public class TestResourceController {
 		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
 		CreateContainer createContainer = new CreateContainer();
 		List<String> cmds = new ArrayList<String>();
-		String startupCmd = "/opt/tomcat7/bin/startup.sh&&java -jar -server /opt/bench4q-agent-publish/bench4q-agent.jar";
+		String startupCmd = "";
 		cmds.add("/bin/sh");
 		cmds.add("-c");
+		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
 		if(resource.getUploadBandwidthKBit() != 0)
-			startupCmd += "&&"+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+			startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
 		cmds.add(startupCmd);
-		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCmd(cmds);
+		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCpuset(cpuset);
-		createContainer.setMemory(resource.getMemoryLimitKB() * 1024);
 		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		try {

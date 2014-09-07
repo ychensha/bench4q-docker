@@ -28,21 +28,33 @@ public class ContainerController {
 		ResourceInfo requiredResource = new ResourceInfo();
 		requiredResource.setCpu(2);
 		requiredResource.setMemroyKB(512 * 1024);// 256MB
+		requiredResource.setDownloadBandwidthKbit(1000);
+		requiredResource.setUploadBandwidthKbit(1000);
 		HttpRequester httpRequester = new HttpRequester();
 		HttpResponse response;
 		try {
-			response = httpRequester.sendPostXml(
-					"localhost:6666/docker/create", MarshalHelper.marshal(
-							ResourceInfo.class, requiredResource), null);
-			AgentModel agent = (AgentModel) MarshalHelper.unmarshal(AgentModel.class,
-					response.getContent());
-			if (agent != null) {
-				System.out.println(agent.getId());
-				System.out.println(agent.getHostName());
-				System.out.println(agent.getPort());
-				System.out.println(agent.getMonitorPort());
-			} else {
-				System.out.println("fail");
+			for(int i = 0; i < 1; ++i){
+				response = httpRequester.sendPostXml(
+						"133.133.134.153:8080/docker/create", MarshalHelper.marshal(
+								ResourceInfo.class, requiredResource), null);
+				System.out.println(response.getContent());
+				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(AgentModel.class,
+						response.getContent());
+				if (agent != null) {
+					System.out.println(agent.getId());
+					System.out.println(agent.getHostName());
+					System.out.println(agent.getPort());
+					System.out.println(agent.getMonitorPort());
+					response = httpRequester.sendPostXml(
+							"133.133.134.153:8080/docker/remove", MarshalHelper.marshal(
+									AgentModel.class, agent), null);
+					MainFrameResponseModel model = (MainFrameResponseModel)MarshalHelper.unmarshal(MainFrameResponseModel.class, response.getContent());
+					if(model.isSuccess()){
+						System.out.println("remove " + agent.getId());
+					}
+				} else {
+					System.out.println("fail");
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -104,16 +116,8 @@ public class ContainerController {
 		
 		AgentModel agent = new AgentModel();
 		agent.setHostName(container.getIp());
-		if(Integer.valueOf(container.getPort()).equals(""))
-			agent.setPort(0);
-		else {
-			agent.setPort(Integer.valueOf(container.getPort()));
-		}
-		if(Integer.valueOf(container.getMonitorPort()).equals(""))
-			agent.setMonitorPort(0);
-		else {
-			agent.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
-		}
+		agent.setPort(Integer.valueOf(container.getPort()));
+		agent.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
 		agent.setId(container.getId());
 		return agent;
 	}
