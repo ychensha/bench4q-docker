@@ -35,7 +35,7 @@ public class ContainerController {
 		try {
 			for(int i = 0; i < 1; ++i){
 				response = httpRequester.sendPostXml(
-						"133.133.134.153:8080/docker/create", MarshalHelper.marshal(
+						"localhost:6666/docker/create", MarshalHelper.marshal(
 								ResourceInfo.class, requiredResource), null);
 				System.out.println(response.getContent());
 				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(AgentModel.class,
@@ -46,7 +46,7 @@ public class ContainerController {
 					System.out.println(agent.getPort());
 					System.out.println(agent.getMonitorPort());
 					response = httpRequester.sendPostXml(
-							"133.133.134.153:8080/docker/remove", MarshalHelper.marshal(
+							"localhost:6666/docker/remove", MarshalHelper.marshal(
 									AgentModel.class, agent), null);
 					MainFrameResponseModel model = (MainFrameResponseModel)MarshalHelper.unmarshal(MainFrameResponseModel.class, response.getContent());
 					if(model.isSuccess()){

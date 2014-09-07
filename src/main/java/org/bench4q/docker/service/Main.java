@@ -10,7 +10,7 @@ public class Main {
 		Properties prop = new Properties();
 		try {
 			prop.load(Main.class.getClassLoader().getResourceAsStream("docker-service.properties"));
-			port = 6666;//Integer.valueOf(prop.getProperty("MAINFRAME_HOST_PORT", "5656"));
+			port = Integer.valueOf(prop.getProperty("MAINFRAME_HOST_PORT", "5656"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

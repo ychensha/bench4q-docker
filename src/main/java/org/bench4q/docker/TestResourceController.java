@@ -184,7 +184,7 @@ public class TestResourceController {
 	private Map<String, String> getContainerLxcConfigWithQuota(RequestResource resource){
 		Map<String, String> result = new HashMap<String, String>();
 		result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuNumber()));
-		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
+		//result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
 		//the way to name is not good enough
 		result.put(LXC_NETWORK_VETH_PAIR, "veth" + CLASSID++);
 		if(CLASSID == 0)
@@ -258,6 +258,7 @@ public class TestResourceController {
 		createContainer.setCmd(cmds);
 		createContainer.setImage(IMAGE_NAME);
 		createContainer.setCpuset(cpuset);
+		createContainer.setMemory(resource.getMemoryLimitKB() * 1024);
 		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		try {
