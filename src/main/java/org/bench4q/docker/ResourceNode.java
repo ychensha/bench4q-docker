@@ -156,7 +156,10 @@ public class ResourceNode {
 				}
 			}
 			// update freeMem
-			freeMemory -= container.getConfig().getMemory() / 1024;
+			if(container.getConfig().getMemory() != 0)
+				freeMemory -= container.getConfig().getMemory() / 1024;
+			else
+				freeMemory -= getMemoryUsageIfNotLimit(container);//we hope this won't happen, for we cann't stop it
 			// update the Priority Queue
 			int size = processorList.size();
 			for (int i = 0; i < size; ++i) {
@@ -164,6 +167,29 @@ public class ResourceNode {
 				processorQueue.add(cpu);
 			}
 		}
+	}
+	
+	private long getMemoryUsageIfNotLimit(Container container){
+		long result = 0;
+		BufferedReader reader;
+		try {
+			reader = new BufferedReader(new FileReader(getMemoryMaxUsageFileUrl(container)));
+			try {
+				result = Long.valueOf(reader.readLine());
+				reader.close();
+			} catch (NumberFormatException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+	
+	private String getMemoryMaxUsageFileUrl(Container container){
+		return "/sys/fs/cgroup/memory/lxc/" + container.getId() + "/memory.max_usage_in_bytes";
 	}
 
 	private int getVCpuRatio() {
@@ -251,7 +277,7 @@ public class ResourceNode {
 				freeCpu++;
 			}
 			// update freeMem
-			freeMemory += (container.getConfig().getMemory()/1024);
+			freeMemory += container.getConfig().getMemory();
 			// update the Priority Queue
 			int size = processorList.size();
 			for (int i = 0; i < size; ++i) {

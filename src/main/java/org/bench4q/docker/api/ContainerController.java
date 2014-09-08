@@ -27,7 +27,7 @@ public class ContainerController {
 	public static void main(String[] args) {
 		ResourceInfo requiredResource = new ResourceInfo();
 		requiredResource.setCpu(2);
-		requiredResource.setMemroyKB(512 * 1024);// 256MB
+		requiredResource.setMemroyKB(256 * 1024);// 256MB
 		requiredResource.setDownloadBandwidthKbit(1000);
 		requiredResource.setUploadBandwidthKbit(1000);
 		HttpRequester httpRequester = new HttpRequester();
@@ -35,7 +35,7 @@ public class ContainerController {
 		try {
 			for(int i = 0; i < 10; ++i){
 				response = httpRequester.sendPostXml(
-						"localhost:8080/docker/create", MarshalHelper.marshal(
+						"133.133.134.153:5656/docker/create", MarshalHelper.marshal(
 								ResourceInfo.class, requiredResource), null);
 				System.out.println(response.getContent());
 				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(AgentModel.class,
@@ -46,7 +46,7 @@ public class ContainerController {
 					System.out.println(agent.getPort());
 					System.out.println(agent.getMonitorPort());
 					response = httpRequester.sendPostXml(
-							"localhost:8080/docker/remove", MarshalHelper.marshal(
+							"133.133.134.153:5656/docker/remove", MarshalHelper.marshal(
 									AgentModel.class, agent), null);
 					MainFrameResponseModel model = (MainFrameResponseModel)MarshalHelper.unmarshal(MainFrameResponseModel.class, response.getContent());
 					if(model.isSuccess()){

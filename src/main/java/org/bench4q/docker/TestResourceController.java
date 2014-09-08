@@ -1,5 +1,6 @@
 package org.bench4q.docker;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ import com.google.gson.reflect.TypeToken;
 
 public class TestResourceController {
 	/**/
-	private static int CLASSID = 1;
+	private static int VETHID = 1;
 	public static String IMAGE_NAME;
 	private static String DOCKER_HOST_NAME;
 	private static int DOCKER_HOST_PORT;
@@ -76,6 +77,7 @@ public class TestResourceController {
 			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty("DOCKER_HOST_PORT", "2375"));
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/bench4q-agent-test");
 			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
+			VETHID = Integer.valueOf(prop.getProperty("VETHID"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -91,30 +93,29 @@ public class TestResourceController {
 	/**
 	 * @return the container created
 	 */
-	public Container createContainer(RequestResource resource){
-		Container container = new Container();
-		String poolResponse = ResourceNode.getInstance().requestResource(resource);
-		
-		if(poolResponse != null){
-			container.setId(createContainerAndSetUploadBandwidth(resource, poolResponse));
-		}
-		else
-			return null;
-		
-		if(container.getId() != null){
-			if(startContainerByIdAndSetLxcConfig(container.getId(), resource, poolResponse) 
-					== 0)
-				return null;
-		}
-		setContainerDownloadBandWidth(resource);
-		return inspectContainer(container.getId());
-	}
+//	public Container createContainer(RequestResource resource){
+//		Container container = new Container();
+//		String poolResponse = ResourceNode.getInstance().requestResource(resource);
+//		
+//		if(poolResponse != null){
+//			container.setId(createContainerAndSetUploadBandwidth(resource, poolResponse));
+//		}
+//		else
+//			return null;
+//		
+//		if(container.getId() != null){
+//			if(startContainerByIdAndSetLxcConfig(container.getId(), resource, poolResponse) 
+//					== 0)
+//				return null;
+//		}
+//		setContainerDownloadBandWidth(resource);
+//		return inspectContainer(container.getId());
+//	}
 	
 	public Container createContainerAndSetCpuQuota(RequestResource resource){
 		Container container = new Container();
 		String poolResponse = ResourceNode.getInstance().requestResource(resource);
 		if(poolResponse != null){
-			String[] cpus = poolResponse.split(",");
 			container.setId(createContainerAndSetUploadBandwidth(resource, poolResponse));
 			resource.setCpuNumber(ResourceNode.getInstance().getCpuQuota(poolResponse));
 		}
@@ -184,11 +185,18 @@ public class TestResourceController {
 	private Map<String, String> getContainerLxcConfigWithQuota(RequestResource resource){
 		Map<String, String> result = new HashMap<String, String>();
 		result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuNumber()));
-		//result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
-		//the way to name is not good enough
-		result.put(LXC_NETWORK_VETH_PAIR, "veth" + CLASSID++);
-		if(CLASSID == 0)
-			CLASSID = 1;
+		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+		Properties prop = new Properties();
+		try {
+			
+			prop.load(TestResourceController.class.getResourceAsStream(PROPERTIES_FILE_NAME));
+			FileOutputStream outputStream = new FileOutputStream(
+					TestResourceController.class.getResource(PROPERTIES_FILE_NAME).toString());
+			prop.setProperty("VETHID", String.valueOf(VETHID));
+			prop.store(outputStream, null);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return result;
 	} 
 	
@@ -196,17 +204,16 @@ public class TestResourceController {
 		Map<String, String> result = new HashMap<String, String>();
 		result.put(LXC_CPUSET_CPUS, cpuset);
 		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
-		//the way to name is not good enough
-		result.put(LXC_NETWORK_VETH_PAIR, "veth" + CLASSID++);
-		if(CLASSID == 0)
-			CLASSID = 1;
+		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+		if(VETHID == 0)
+			VETHID = 1;
 		return result;
 	}
 	
 	private void setContainerDownloadBandWidth(RequestResource resource){
 		if(resource.getDownloadBandwidthKBit() == 0)
 			return;
-		String command = getTcCmd("veth" + (CLASSID - 1), resource.getDownloadBandwidthKBit());
+		String command = getTcCmd("veth" + (VETHID - 1), resource.getDownloadBandwidthKBit());
 		if(DOCKER_HOST_PASSWORD != null){
 			String psw = "echo " + DOCKER_HOST_PASSWORD +" | ";
 			command += psw;
@@ -218,24 +225,24 @@ public class TestResourceController {
 		}
 	}
 	
-	private int startContainerByIdAndSetLxcConfig(String id, RequestResource resource, String cpuset){
-		StartContainer startContainer = new StartContainer();
-		List<String> ports = new ArrayList<String>();
-		ports.add("0");
-		startContainer.setLxcConf(getContainerLxcConfig(resource, cpuset));
-		startContainer.setPortbindings(ports);
-		startContainer.setPrivileged(true);
-		
-		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
-				+"/containers/" + id + "/start");
-		HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
-		httpPost.setEntity(httpEntity);
-		
-		if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
-			return 1;
-		else
-			return 0;
-	}
+//	private int startContainerByIdAndSetLxcConfig(String id, RequestResource resource, String cpuset){
+//		StartContainer startContainer = new StartContainer();
+//		List<String> ports = new ArrayList<String>();
+//		ports.add("0");
+//		startContainer.setLxcConf(getContainerLxcConfig(resource, cpuset));
+//		startContainer.setPortbindings(ports);
+//		startContainer.setPrivileged(true);
+//		
+//		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
+//				+"/containers/" + id + "/start");
+//		HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer), ContentType.APPLICATION_JSON);
+//		httpPost.setEntity(httpEntity);
+//		
+//		if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
+//			return 1;
+//		else
+//			return 0;
+//	}
 	
 	private String getTcCmd(String device, long bandwidthLimit){
 		return "sudo tc qdisc add dev "
@@ -243,23 +250,28 @@ public class TestResourceController {
 				+ bandwidthLimit + "kbit latency 50ms burst 10000 mpu 64 mtu 1500";
 	}
 	
-	private String createContainerAndSetUploadBandwidth(RequestResource resource, String cpuset){
-		String id = null;
-		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
-		CreateContainer createContainer = new CreateContainer();
+	private CreateContainer getCreateContainerWithSetting(RequestResource resource, String cpuset){
+		CreateContainer result = new CreateContainer();
 		List<String> cmds = new ArrayList<String>();
 		String startupCmd = "";
 		cmds.add("/bin/sh");
 		cmds.add("-c");
 		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
 		if(resource.getUploadBandwidthKBit() != 0)
-			startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+			startupCmd += ""+getTcCmd("eth0", resource.getUploadBandwidthKBit());
 		cmds.add(startupCmd);
-		createContainer.setCmd(cmds);
-		createContainer.setImage(IMAGE_NAME);
-		createContainer.setCpuset(cpuset);
-		createContainer.setMemory(resource.getMemoryLimitKB() * 1024);
-		HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer), ContentType.APPLICATION_JSON);
+		result.setCmd(cmds);
+		result.setImage(IMAGE_NAME);
+		result.setCpuset(cpuset);
+		result.setMemory(resource.getMemoryLimitKB() * 1024);
+		return result;
+	}
+	
+	private String createContainerAndSetUploadBandwidth(RequestResource resource, String cpuset){
+		String id = null;
+		HttpPost httpPost = new HttpPost(PROTOL_PREFIX + DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
+		HttpEntity httpEntity = new StringEntity(
+				gson.toJson(getCreateContainerWithSetting(resource, cpuset)), ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		try {
 			CloseableHttpResponse response = httpClient.execute(httpPost);
