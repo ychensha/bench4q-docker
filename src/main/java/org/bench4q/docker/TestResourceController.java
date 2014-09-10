@@ -57,7 +57,7 @@ public class TestResourceController {
 		RequestResource resource = new RequestResource();
 		resource.setCpuNumber(1);
 		resource.setMemoryLimitKB(256000);
-		resource.setUploadBandwidthKBit(200000);
+		resource.setUploadBandwidthKByte(200000);
 		
 		System.out.println(ResourceNode.getInstance().getCurrentStatus().getTotalCpu());
 		Container container = controller.createContainerAndSetCpuQuota(resource);
@@ -211,9 +211,9 @@ public class TestResourceController {
 	}
 	
 	private void setContainerDownloadBandWidth(RequestResource resource){
-		if(resource.getDownloadBandwidthKBit() == 0)
+		if(resource.getDownloadBandwidthKByte() == 0)
 			return;
-		String command = getTcCmd("veth" + (VETHID - 1), resource.getDownloadBandwidthKBit());
+		String command = getTcCmd("veth" + (VETHID - 1), resource.getDownloadBandwidthKByte());
 		if(DOCKER_HOST_PASSWORD != null){
 			String psw = "echo " + DOCKER_HOST_PASSWORD +" | ";
 			command += psw;
@@ -247,7 +247,7 @@ public class TestResourceController {
 	private String getTcCmd(String device, long bandwidthLimit){
 		return "sudo tc qdisc add dev "
 				+device+" root tbf rate "
-				+ bandwidthLimit + "kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+				+ bandwidthLimit * 8 + "kbit latency 50ms burst 10000 mpu 64 mtu 1500";
 	}
 	
 	private CreateContainer getCreateContainerWithSetting(RequestResource resource, String cpuset){
@@ -257,8 +257,8 @@ public class TestResourceController {
 		cmds.add("/bin/sh");
 		cmds.add("-c");
 		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-		if(resource.getUploadBandwidthKBit() != 0)
-			startupCmd += ""+getTcCmd("eth0", resource.getUploadBandwidthKBit());
+		if(resource.getUploadBandwidthKByte() != 0)
+			startupCmd += ""+getTcCmd("eth0", resource.getUploadBandwidthKByte());
 		cmds.add(startupCmd);
 		result.setCmd(cmds);
 		result.setImage(IMAGE_NAME);
