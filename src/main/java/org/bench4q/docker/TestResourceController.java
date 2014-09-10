@@ -53,20 +53,21 @@ public class TestResourceController {
 	private CloseableHttpClient httpClient = HttpClients.createDefault();
 	
 	public static void main(String[] args){
-		TestResourceController controller = new TestResourceController();
-		RequestResource resource = new RequestResource();
-		resource.setCpuNumber(1);
-		resource.setMemoryLimitKB(256000);
-		resource.setUploadBandwidthKByte(200000);
-		
-		System.out.println(ResourceNode.getInstance().getCurrentStatus().getTotalCpu());
-		Container container = controller.createContainerAndSetCpuQuota(resource);
-		if(container != null){
-			System.out.println(container.getId());
-		}
-		else {
-			System.out.println("create fail");
-		}
+//		TestResourceController controller = new TestResourceController();
+//		RequestResource resource = new RequestResource();
+//		resource.setCpuNumber(1);
+//		resource.setMemoryLimitKB(256000);
+//		resource.setUploadBandwidthKByte(200000);
+//		
+//		System.out.println(ResourceNode.getInstance().getCurrentStatus().getTotalCpu());
+//		Container container = controller.createContainerAndSetCpuQuota(resource);
+//		if(container != null){
+//			System.out.println(container.getId());
+//		}
+//		else {
+//			System.out.println("create fail");
+//		}
+		System.out.println(TestResourceController.class.getClassLoader().getResource(PROPERTIES_FILE_NAME).toString());
 	}
 	
 	public TestResourceController(){
@@ -189,9 +190,9 @@ public class TestResourceController {
 		Properties prop = new Properties();
 		try {
 			
-			prop.load(TestResourceController.class.getResourceAsStream(PROPERTIES_FILE_NAME));
+			prop.load(TestResourceController.class.getClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME));
 			FileOutputStream outputStream = new FileOutputStream(
-					TestResourceController.class.getResource(PROPERTIES_FILE_NAME).toString());
+					TestResourceController.class.getClassLoader().getResource(PROPERTIES_FILE_NAME).toString());
 			prop.setProperty("VETHID", String.valueOf(VETHID));
 			prop.store(outputStream, null);
 		} catch (IOException e) {
@@ -200,15 +201,15 @@ public class TestResourceController {
 		return result;
 	} 
 	
-	private Map<String, String> getContainerLxcConfig(RequestResource resource, String cpuset){
-		Map<String, String> result = new HashMap<String, String>();
-		result.put(LXC_CPUSET_CPUS, cpuset);
-		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
-		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
-		if(VETHID == 0)
-			VETHID = 1;
-		return result;
-	}
+//	private Map<String, String> getContainerLxcConfig(RequestResource resource, String cpuset){
+//		Map<String, String> result = new HashMap<String, String>();
+//		result.put(LXC_CPUSET_CPUS, cpuset);
+//		result.put(LXC_MEMORY_LIMIT_IN_BYTES, String.valueOf(resource.getMemoryLimitKB() * 1024));
+//		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+//		if(VETHID == 0)
+//			VETHID = 1;
+//		return result;
+//	}
 	
 	private void setContainerDownloadBandWidth(RequestResource resource){
 		if(resource.getDownloadBandwidthKByte() == 0)
@@ -216,7 +217,7 @@ public class TestResourceController {
 		String command = getTcCmd("veth" + (VETHID - 1), resource.getDownloadBandwidthKByte());
 		if(DOCKER_HOST_PASSWORD != null){
 			String psw = "echo " + DOCKER_HOST_PASSWORD +" | ";
-			command += psw;
+			command = psw + command;
 		}
 		try {
 			Runtime.getRuntime().exec(command);

@@ -33,7 +33,7 @@ public class ContainerController {
 		HttpRequester httpRequester = new HttpRequester();
 		HttpResponse response;
 		try {
-			for(int i = 0; i < 10; ++i){
+			for(int i = 0; i < 1; ++i){
 				response = httpRequester.sendPostXml(
 						"133.133.134.153:5656/docker/create", MarshalHelper.marshal(
 								ResourceInfo.class, requiredResource), null);
