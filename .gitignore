@@ -3,3 +3,7 @@
 /.settings/
 /target/
 /logs/
+/docker-monitor/.classpath
+/docker-monitor/.project
+/docker-monitor/target
+/docker-monitor/.settings

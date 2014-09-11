@@ -132,8 +132,8 @@ class Config{
 	private String hostname;
 	private String user;
 	private int cpuShares;
-	private int memory;
-	private int memorySwap;
+	private long memory;
+	private long memorySwap;
 	private String cpuset;
 	private boolean attachStdin;
 	private boolean attachStdout;
@@ -165,11 +165,11 @@ class Config{
 		this.cpuset = cpuset;
 	}
 
-	public int getMemory() {
+	public long getMemory() {
 		return memory;
 	}
 
-	public void setMemory(int memory) {
+	public void setMemory(long memory) {
 		this.memory = memory;
 	}
 }
