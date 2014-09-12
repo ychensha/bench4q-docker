@@ -320,7 +320,8 @@ public class TestResourceController {
 	public boolean remove(Container container){
 		if(killContainerPost(container) == KILL_CONTAINER_SUCCESS_CODE
 				&& removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE){
-			ResourceNode.getInstance().releaseResource(container);
+			if(ResourceNode.getInstance() != null)
+				ResourceNode.getInstance().releaseResource(container);
 			return true;
 		}
 		else {

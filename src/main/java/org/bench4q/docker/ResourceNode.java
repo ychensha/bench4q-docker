@@ -61,12 +61,13 @@ public class ResourceNode {
 	private static volatile ResourceNode instance = new ResourceNode();
 
 	private ResourceNode() {
+		cleanUp();
 		freeCpu = totalCpu = 0;
 		readSystemInfo();
 		initBlotter();
 		freeCpu *= getVCpuRatio();
 		totalCpu = freeCpu;
-		chenckAndUpdateBlotter();
+		//chenckAndUpdateBlotter();
 	}
 
 	public static ResourceNode getInstance() {
@@ -134,40 +135,49 @@ public class ResourceNode {
 			processorList.add(cpu);
 		}
 	}
-
-	private void chenckAndUpdateBlotter() {
+	
+	private void cleanUp(){
 		TestResourceController testResourceController = new TestResourceController();
 		List<Container> runningContainerList = testResourceController
 				.getContainerList();
-		for (Container container : runningContainerList) {
-			container = testResourceController.inspectContainer(container
-					.getId());
-			String[] cpus = container.getConfig().getCpuset().split(",");
-			for (int i = 0; i < cpus.length; ++i) {
-				if (cpus[i].equals("")) {
-					for (Cpu cpu : processorList) {
-						cpu.setUsage(cpu.getUsage() + 1);
-					}
-					freeCpu -= processorList.size();
-				} else {
-					Cpu cpu = processorList.get(Integer.valueOf(cpus[i]));
-					cpu.setUsage(cpu.getUsage() + 1);
-					freeCpu--;
-				}
-			}
-			// update freeMem
-			if(container.getConfig().getMemory() != 0)
-				freeMemory -= container.getConfig().getMemory() / 1024;
-			else
-				freeMemory -= getMemoryUsageIfNotLimit(container);//we hope this won't happen, for we cann't stop it
-			// update the Priority Queue
-			int size = processorList.size();
-			for (int i = 0; i < size; ++i) {
-				Cpu cpu = processorQueue.poll();
-				processorQueue.add(cpu);
-			}
+		for(Container container : runningContainerList){
+			testResourceController.remove(container);
 		}
 	}
+
+//	private void chenckAndUpdateBlotter() {
+//		TestResourceController testResourceController = new TestResourceController();
+//		List<Container> runningContainerList = testResourceController
+//				.getContainerList();
+//		for (Container container : runningContainerList) {
+//			container = testResourceController.inspectContainer(container
+//					.getId());
+//			String[] cpus = container.getConfig().getCpuset().split(",");
+//			for (int i = 0; i < cpus.length; ++i) {
+//				if (cpus[i].equals("")) {
+//					for (Cpu cpu : processorList) {
+//						cpu.setUsage(cpu.getUsage() + 1);
+//					}
+//					freeCpu -= processorList.size();
+//				} else {
+//					Cpu cpu = processorList.get(Integer.valueOf(cpus[i]));
+//					cpu.setUsage(cpu.getUsage() + 1);
+//					freeCpu--;
+//				}
+//			}
+//			// update freeMem
+//			if(container.getConfig().getMemory() != 0)
+//				freeMemory -= container.getConfig().getMemory() / 1024;
+//			else
+//				freeMemory -= getMemoryUsageIfNotLimit(container);//we hope this won't happen, for we cann't stop it
+//			// update the Priority Queue
+//			int size = processorList.size();
+//			for (int i = 0; i < size; ++i) {
+//				Cpu cpu = processorQueue.poll();
+//				processorQueue.add(cpu);
+//			}
+//		}
+//	}
 	
 	private long getMemoryUsageIfNotLimit(Container container){
 		long result = 0;
