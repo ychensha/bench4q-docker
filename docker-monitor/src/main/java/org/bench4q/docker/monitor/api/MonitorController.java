@@ -29,7 +29,7 @@ public class MonitorController {
 		return result;
 	}
 	
-	@RequestMapping("/PhysicalDisk")
+	@RequestMapping("/physicalDisk")
 	@ResponseBody
 	public PhysicalDiskModel getPhysicalDiskModel(){
 		DiskInfo diskInfo = new DiskInfo();
@@ -39,7 +39,7 @@ public class MonitorController {
 		return result;
 	}
 	
-	@RequestMapping("/Memory")
+	@RequestMapping("/memory")
 	@ResponseBody
 	public MemoryModel getMemoryModel(){
 		MemoryModel result = new MemoryModel();
@@ -48,7 +48,7 @@ public class MonitorController {
 		result.setMemoryUsedPercent(memoryInfo.getMemoryUsedPercent());
 		return result;
 	}
-	@RequestMapping("/NetworkInterface")
+	@RequestMapping("/networkInterface")
 	@ResponseBody
 	public NetworkInterfaceModel getNetworkInterfaceModel(){
 		NetworkInterfaceModel result = new NetworkInterfaceModel();
@@ -58,7 +58,7 @@ public class MonitorController {
 		result.setKiloBytesSentPerSecond(networkInfo.getKiloBytesSentPerSecond());
 		return result;
 	}
-	@RequestMapping("/Processor")
+	@RequestMapping("/processor")
 	@ResponseBody
 	public ProcessorModel getProcessorModel(){
 		ProcessorModel result = new ProcessorModel();
