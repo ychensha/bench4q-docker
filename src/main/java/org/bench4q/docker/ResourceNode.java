@@ -286,8 +286,8 @@ public class ResourceNode {
 				cpu.setUsage(cpu.getUsage() - 1);
 				freeCpu++;
 			}
-			// update freeMem
-			freeMemory += container.getConfig().getMemory();
+			// update freeMem, the config of container uses byte as unit
+			freeMemory += container.getConfig().getMemory() / 1024;
 			// update the Priority Queue
 			int size = processorList.size();
 			for (int i = 0; i < size; ++i) {
