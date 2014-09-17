@@ -27,7 +27,7 @@ public class ContainerController {
 	public static void main(String[] args) {
 		ResourceInfo requiredResource = new ResourceInfo();
 		requiredResource.setCpu(2);
-		requiredResource.setMemroyKB(256 * 1024);// 256MB
+		requiredResource.setMemoryKB(256 * 1024);// 256MB
 		requiredResource.setDownloadBandwidthKByte(1000);
 		requiredResource.setUploadBandwidthKByte(1000);
 		HttpRequester httpRequester = new HttpRequester();
@@ -102,7 +102,7 @@ public class ContainerController {
 	private RequestResource setRequestResource(ResourceInfo resource) {
 		RequestResource requestResource = new RequestResource();
 		requestResource.setCpuNumber(resource.getCpu());
-		requestResource.setMemoryLimitKB(resource.getMemroyKB());
+		requestResource.setMemoryLimitKB(resource.getMemoryKB());
 		requestResource.setDownloadBandwidthKByte(resource
 				.getDownloadBandwidthKByte());
 		requestResource.setUploadBandwidthKByte(resource
