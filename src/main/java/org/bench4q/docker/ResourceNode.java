@@ -42,10 +42,13 @@ class Cpu {
 
 public class ResourceNode {
 	private int totalCpu;
-	
 	private int freeCpu;
 	private long totalMemory;
 	private long freeMemory;
+	private long totalUploadBandWidth;
+	private long usedUploadBandWidth;
+	private long totalDownloadBandWidth;
+	private long usedDownloadBandWidth;
 	private Queue<Cpu> processorQueue;
 	private List<Cpu> processorList;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -63,18 +66,16 @@ public class ResourceNode {
 	private ResourceNode() {
 		cleanUp();
 		freeCpu = totalCpu = 0;
+		totalDownloadBandWidth = totalUploadBandWidth = 10 * 1000;
+		usedDownloadBandWidth = usedUploadBandWidth = 0;
 		readSystemInfo();
 		initBlotter();
 		freeCpu *= getVCpuRatio();
 		totalCpu = freeCpu;
-		//chenckAndUpdateBlotter();
 	}
 
 	public static ResourceNode getInstance() {
 		return instance;
-	}
-
-	public static void main(String[] args) {
 	}
 
 	private void readSystemInfo() {
@@ -179,31 +180,31 @@ public class ResourceNode {
 //		}
 //	}
 	
-	private long getMemoryUsageIfNotLimit(Container container){
-		long result = 0;
-		BufferedReader reader;
-		try {
-			reader = new BufferedReader(new FileReader(getMemoryMaxUsageFileUrl(container)));
-			try {
-				result = Long.valueOf(reader.readLine());
-				reader.close();
-			} catch (NumberFormatException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		return result;
-	}
+//	private long getMemoryUsageIfNotLimit(Container container){
+//		long result = 0;
+//		BufferedReader reader;
+//		try {
+//			reader = new BufferedReader(new FileReader(getMemoryMaxUsageFileUrl(container)));
+//			try {
+//				result = Long.valueOf(reader.readLine());
+//				reader.close();
+//			} catch (NumberFormatException e) {
+//				e.printStackTrace();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		}
+//		return result;
+//	}
 	
-	private String getMemoryMaxUsageFileUrl(Container container){
-		return "/sys/fs/cgroup/memory/lxc/" + container.getId() + "/memory.max_usage_in_bytes";
-	}
+//	private String getMemoryMaxUsageFileUrl(Container container){
+//		return "/sys/fs/cgroup/memory/lxc/" + container.getId() + "/memory.max_usage_in_bytes";
+//	}
 
 	private int getVCpuRatio() {
-		int result = 3;
+		int result = 0;
 		Properties prop = new Properties();
 		try {
 			prop.load(ResourceNode.class.getClassLoader().getResourceAsStream(
@@ -227,6 +228,8 @@ public class ResourceNode {
 		
 		long testCpu = resource.getCpuNumber();
 		long testMem = resource.getMemoryLimitKB();
+		long testUploadBandWidth = resource.getUploadBandwidthKByte();
+		long testDownloadBandWidth = resource.getDownloadBandwidthKByte();
 		String response = null;
 		lock.writeLock().lock();
 		try {
@@ -241,6 +244,8 @@ public class ResourceNode {
 				builder.deleteCharAt(builder.length() - 1);
 				freeCpu -= testCpu;
 				freeMemory -= testMem;
+				usedDownloadBandWidth -= testDownloadBandWidth;
+				usedUploadBandWidth -= testUploadBandWidth;
 				response = builder.toString();
 			}
 		} finally {
@@ -250,31 +255,31 @@ public class ResourceNode {
 		return response;
 	}
 	
-	public int requestResourceReturnQuota(RequestResource resource){
-		int result = 0;
-		if(resource == null || resource.getCpuNumber() == 0)
-			return result;
-		
-		long testCpu = resource.getCpuNumber();
-		long testMem = resource.getMemoryLimitKB();
-		lock.writeLock().lock();
-		try {
-			if (freeCpu >= testCpu && freeMemory >= testMem) {
-				for (int i = 0; i < testCpu; ++i) {
-					Cpu cpu = processorQueue.poll();
-					cpu.setUsage(cpu.getUsage() + 1);
-					processorQueue.add(cpu);
-				}
-				freeCpu -= testCpu;
-				freeMemory -= testMem;
-				result = (int)testCpu*CPU_CFS_PERIOD_US/getVCpuRatio();
-			}
-		} finally {
-			lock.writeLock().unlock();
-		}
-
-		return result;
-	}
+//	public int requestResourceReturnQuota(RequestResource resource){
+//		int result = 0;
+//		if(resource == null || resource.getCpuNumber() == 0)
+//			return result;
+//		
+//		long testCpu = resource.getCpuNumber();
+//		long testMem = resource.getMemoryLimitKB();
+//		lock.writeLock().lock();
+//		try {
+//			if (freeCpu >= testCpu && freeMemory >= testMem) {
+//				for (int i = 0; i < testCpu; ++i) {
+//					Cpu cpu = processorQueue.poll();
+//					cpu.setUsage(cpu.getUsage() + 1);
+//					processorQueue.add(cpu);
+//				}
+//				freeCpu -= testCpu;
+//				freeMemory -= testMem;
+//				result = (int)testCpu*CPU_CFS_PERIOD_US/getVCpuRatio();
+//			}
+//		} finally {
+//			lock.writeLock().unlock();
+//		}
+//
+//		return result;
+//	}
 
 	public void releaseResource(Container container) {
 		String[] cpus = container.getConfig().getCpuset().split(",");

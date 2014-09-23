@@ -1,6 +1,5 @@
 package org.bench4q.docker.api;
 
-
 import java.io.IOException;
 
 import javax.xml.bind.JAXBException;
@@ -27,29 +26,33 @@ public class ContainerController {
 	public static void main(String[] args) {
 		ResourceInfo requiredResource = new ResourceInfo();
 		requiredResource.setCpu(2);
-		requiredResource.setMemoryKB(256 * 1024);// 256MB
+		requiredResource.setMemoryKB(1048576);// 256MB
 		requiredResource.setDownloadBandwidthKByte(1000);
 		requiredResource.setUploadBandwidthKByte(1000);
 		HttpRequester httpRequester = new HttpRequester();
 		HttpResponse response;
 		try {
-			for(int i = 0; i < 1; ++i){
+			for (int i = 0; i < 3; ++i) {
 				response = httpRequester.sendPostXml(
-						"133.133.134.153:5656/docker/create", MarshalHelper.marshal(
-								ResourceInfo.class, requiredResource), null);
+						"133.133.134.153:5656/docker/create", MarshalHelper
+								.marshal(ResourceInfo.class, requiredResource),
+						null);
 				System.out.println(response.getContent());
-				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(AgentModel.class,
-						response.getContent());
+				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(
+						AgentModel.class, response.getContent());
 				if (agent != null) {
 					System.out.println(agent.getId());
 					System.out.println(agent.getHostName());
 					System.out.println(agent.getPort());
 					System.out.println(agent.getMonitorPort());
 					response = httpRequester.sendPostXml(
-							"133.133.134.153:5656/docker/remove", MarshalHelper.marshal(
-									AgentModel.class, agent), null);
-					MainFrameResponseModel model = (MainFrameResponseModel)MarshalHelper.unmarshal(MainFrameResponseModel.class, response.getContent());
-					if(model.isSuccess()){
+							"133.133.134.153:5656/docker/remove",
+							MarshalHelper.marshal(AgentModel.class, agent),
+							null);
+					MainFrameResponseModel model = (MainFrameResponseModel) MarshalHelper
+							.unmarshal(MainFrameResponseModel.class,
+									response.getContent());
+					if (model.isSuccess()) {
 						System.out.println("remove " + agent.getId());
 					}
 				} else {
@@ -74,7 +77,7 @@ public class ContainerController {
 	public AgentModel createContainer(@RequestBody ResourceInfo resource) {
 		AgentModel result = setAgentCreated(controller
 				.createContainerAndSetCpuQuota(setRequestResource(resource)));
-		if(result != null)
+		if (result != null)
 			result.setResourceInfo(resource);
 		return result;
 	}
@@ -84,7 +87,7 @@ public class ContainerController {
 	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
 		MainFrameResponseModel result = new MainFrameResponseModel();
 		result.setSuccess(controller.remove(getContainerByAgent(agent)));
-		
+
 		return result;
 	}
 
@@ -93,7 +96,7 @@ public class ContainerController {
 		testResource.setTotalCpu(resource.getTotalCpu());
 		testResource.setFreeCpu(resource.getFreeCpu());
 		testResource.setUsedCpu(resource.getUsedCpu());
-		testResource.setTotalMemeory(resource.getTotalMemeory());
+		testResource.setTotalMemory(resource.getTotalMemeory());
 		testResource.setFreeMemory(resource.getFreeMemory());
 		testResource.setUsedMemory(resource.getUsedMemory());
 		return testResource;
@@ -111,9 +114,9 @@ public class ContainerController {
 	}
 
 	private AgentModel setAgentCreated(Container container) {
-		if(container == null)
+		if (container == null)
 			return null;
-		
+
 		AgentModel agent = new AgentModel();
 		agent.setHostName(container.getIp());
 		agent.setPort(Integer.valueOf(container.getPort()));
