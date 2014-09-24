@@ -61,7 +61,7 @@ public class TestResourceController {
 			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty(
 					"DOCKER_HOST_PORT", "2375"));
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME",
-					"chensha/bench4q-agent-test");
+					"chensha/docker");
 			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
 			VETHID = Integer.valueOf(prop.getProperty("VETHID"));
 		} catch (IOException e) {
@@ -106,11 +106,12 @@ public class TestResourceController {
 		Container container = new Container();
 		String poolResponse = ResourceNode.getInstance().requestResource(
 				resource);
+		System.out.println("get resourcNode response.");
 		if (poolResponse == null)
 			return null;
-
 		container.setId(createContainerAndSetUploadBandwidth(resource,
 				poolResponse));
+		System.out.println("create finish.");
 		resource.setCpuNumber(ResourceNode.getInstance().getCpuQuota(
 				poolResponse));
 		if (container.getId() != null) {
@@ -118,7 +119,9 @@ public class TestResourceController {
 					resource))
 				return null;
 		}
+		System.out.println("start finish.");
 		setContainerDownloadBandWidth(resource);
+		System.out.println("set download bandwidth finish.");
 		return inspectContainer(container.getId());
 	}
 
