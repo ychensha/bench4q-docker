@@ -15,14 +15,15 @@ import org.apache.http.client.ClientProtocolException;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+@Component
 public class TestResourceController {
-	/**/
 	private static int VETHID = 1;
 	public static String IMAGE_NAME;
 	private static String DOCKER_HOST_NAME;
