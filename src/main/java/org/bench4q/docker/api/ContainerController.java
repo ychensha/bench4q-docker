@@ -35,7 +35,7 @@ public class ContainerController {
 		HttpRequester httpRequester = new HttpRequester();
 		HttpResponse response;
 		try {
-			for (int i = 0; i < 3; ++i) {
+			for (int i = 0; i < 1; ++i) {
 				response = httpRequester.sendPostXml(
 						"133.133.134.153:5656/docker/create", MarshalHelper
 								.marshal(ResourceInfo.class, requiredResource),
@@ -102,22 +102,27 @@ public class ContainerController {
 	private int checkAgent(AgentModel agent) {
 		HttpResponse response = null;
 		int checkCount = 0;
+		long startTime = System.currentTimeMillis();
+		int result = 0;
 		try {
-			while(checkCount < 5){
+			while(result == 0){
 				response = httpRequester.sendGet(agent.getHostName()
 						+ ":" + agent.getPort(), null, null);
-				checkCount++;
-				if(response.getCode() != 0)
-					return response.getCode();
+//				checkCount++;
+//				if(response.getCode() != 0)
+//					return response.getCode();
+				result = response.getCode();
 				Thread.currentThread();
-				Thread.sleep(3000);
+				Thread.sleep(1000);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		return 0;
+		long endTime = System.currentTimeMillis();
+		System.out.println("check the agent takes: " + (endTime-startTime)/1000 + " s.");
+		return result;
 	}
 
 	private TestResourceModel setTestResource(Resource resource) {
