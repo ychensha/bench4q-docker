@@ -289,13 +289,16 @@ public class TestResourceController {
 				ContentType.APPLICATION_JSON);
 		httpPost.setEntity(httpEntity);
 		try {
+			System.out.println("starting call docker api create.");
 			CloseableHttpResponse response = httpClient.execute(httpPost);
+			System.out.println("get docker creation response");
 			if (response.getStatusLine().getStatusCode() == CREATE_CONTAINER_SUCCESS_CODE) {
 				result = EntityUtils.toString(response.getEntity(), "utf-8");
 				CreateContainerResponse createContainerResponse = gson
 						.fromJson(result, CreateContainerResponse.class);
 				result = createContainerResponse.getId();
 			}
+			response.close();
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
