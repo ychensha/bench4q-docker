@@ -366,7 +366,7 @@ public class TestResourceController {
 	private int killContainerPost(Container container) {
 		HttpResponse response = null;
 		try {
-			response = httpRequester.sendDelete(DOCKER_HOST_NAME + ":" + DOCKER_HOST_PORT + "/containers/"
+			response = httpRequester.sendPostJson(DOCKER_HOST_NAME + ":" + DOCKER_HOST_PORT + "/containers/"
 					+ container.getId() + "/kill", null,
 					null);
 		} catch (IOException e) {
