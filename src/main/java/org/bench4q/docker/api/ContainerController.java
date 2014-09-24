@@ -12,6 +12,7 @@ import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/docker")
 public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
+	@Autowired
+	private HttpRequester httpRequester;
 
 	public static void main(String[] args) {
 		ResourceInfo requiredResource = new ResourceInfo();
@@ -79,6 +82,9 @@ public class ContainerController {
 				.createContainerAndSetCpuQuota(setRequestResource(resource)));
 		if (result != null)
 			result.setResourceInfo(resource);
+		int response = checkAgent(result);
+		if(response == 0)
+			return null;
 		return result;
 	}
 
@@ -87,8 +93,28 @@ public class ContainerController {
 	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
 		MainFrameResponseModel result = new MainFrameResponseModel();
 		result.setSuccess(controller.remove(getContainerByAgent(agent)));
-
 		return result;
+	}
+
+	private int checkAgent(AgentModel agent) {
+		HttpResponse response = null;
+		int checkCount = 0;
+		try {
+			while(checkCount < 5){
+				response = httpRequester.sendGet(agent.getHostName()
+						+ ":" + agent.getPort(), null, null);
+				checkCount++;
+				if(response.getCode() != 0)
+					return response.getCode();
+				Thread.currentThread();
+				Thread.sleep(3000);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		return 0;
 	}
 
 	private TestResourceModel setTestResource(Resource resource) {
@@ -116,7 +142,6 @@ public class ContainerController {
 	private AgentModel setAgentCreated(Container container) {
 		if (container == null)
 			return null;
-
 		AgentModel agent = new AgentModel();
 		agent.setHostName(container.getIp());
 		agent.setPort(Integer.valueOf(container.getPort()));

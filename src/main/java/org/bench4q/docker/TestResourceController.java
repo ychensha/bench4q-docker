@@ -1,28 +1,20 @@
 package org.bench4q.docker;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.http.HttpEntity;
 import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -51,7 +43,8 @@ public class TestResourceController {
 
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(
 			FieldNamingPolicy.UPPER_CAMEL_CASE).create();
-	private HttpRequester httpRequester = new HttpRequester();
+	@Autowired
+	private HttpRequester httpRequester;
 
 	public TestResourceController() {
 		Properties prop = new Properties();
@@ -121,8 +114,33 @@ public class TestResourceController {
 		}
 		System.out.println("start finish.");
 		setContainerDownloadBandWidth(resource);
-		System.out.println("set download bandwidth finish.");
-		return inspectContainer(container.getId());
+		System.out.println("create container finish.");
+		container = inspectContainer(container.getId());
+		container.setIp(getHostInet4Address("eth0"));
+		return container;
+	}
+	
+	private String getHostInet4Address(String name){
+		String result = null;
+		Enumeration<NetworkInterface> netInterfaces = null;
+		try {
+			netInterfaces = NetworkInterface.getNetworkInterfaces();
+			while (netInterfaces.hasMoreElements()) {
+				NetworkInterface ni = netInterfaces.nextElement();
+				if (!ni.getName().equals(name)) {
+					continue;
+				}
+				Enumeration<InetAddress> ips = ni.getInetAddresses();
+				while (ips.hasMoreElements()) {
+					String address = ips.nextElement().getHostAddress();
+					if(address.split("\\.").length ==4)
+						result = address;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
 	}
 
 	//
