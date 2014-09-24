@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
-@Component
 public class TestResourceController {
 	private static int VETHID = 1;
 	public static String IMAGE_NAME;
@@ -44,8 +43,7 @@ public class TestResourceController {
 
 	private Gson gson = new GsonBuilder().setFieldNamingPolicy(
 			FieldNamingPolicy.UPPER_CAMEL_CASE).create();
-	@Autowired
-	private HttpRequester httpRequester;
+	private HttpRequester httpRequester = new HttpRequester();
 
 	public TestResourceController() {
 		Properties prop = new Properties();

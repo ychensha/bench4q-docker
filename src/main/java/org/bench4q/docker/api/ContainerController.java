@@ -23,8 +23,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/docker")
 public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
-	@Autowired
-	private HttpRequester httpRequester;
+	private HttpRequester httpRequester = new HttpRequester();
 
 	public static void main(String[] args) {
 		ResourceInfo requiredResource = new ResourceInfo();
