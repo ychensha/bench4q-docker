@@ -2,6 +2,7 @@ package org.bench4q.docker.monitor.api;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class DiskInfo {
 	}
 
 	class Handler extends Thread {
-		private void compute() throws NumberFormatException, IOException {
+		private void compute(){
 			double[] read = new double[] { 0.0, 0.0 };
 			double[] write = new double[] { 0.0, 0.0 };
 			String url = null;
@@ -65,19 +66,25 @@ public class DiskInfo {
 				read[1] = write[1] = 0;
 				for(int pid : pidList){
 					url = "/proc/" + pid + "/io";
-					fr = new FileReader(url);
-					BufferedReader buff = new BufferedReader(fr);
-					String line;
-					while ((line = buff.readLine()) != null) {
-						String[] array = line.trim().split("\\s+");
-						if (array[0].equals("read_bytes:")) {
-							read[1] += Double.valueOf(array[1]);
-						} else if (array[0].equals("write_bytes:")) {
-							write[1] += Double.valueOf(array[1]);
-							break;
+					try {
+						fr = new FileReader(url);
+						BufferedReader buff = new BufferedReader(fr);
+						String line;
+						while ((line = buff.readLine()) != null) {
+							String[] array = line.trim().split("\\s+");
+							if (array[0].equals("read_bytes:")) {
+								read[1] += Double.valueOf(array[1]);
+							} else if (array[0].equals("write_bytes:")) {
+								write[1] += Double.valueOf(array[1]);
+								break;
+							}
 						}
+						buff.close();
+					} catch (FileNotFoundException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-					buff.close();
 				}
 				diskReadRate = (read[1] - read[0]);
 				diskWriteRate = (write[1] - write[0]);
@@ -95,9 +102,7 @@ public class DiskInfo {
 				compute();
 			} catch (NumberFormatException e) {
 				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			} 
 		}
 	}
 }
