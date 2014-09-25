@@ -19,6 +19,7 @@ public class DiskInfo {
 	
 	public DiskInfo(){
 		initPidList();
+		startCompute();
 	}
 	private void initPidList(){
 		pidList = new ArrayList<Integer>();
@@ -37,7 +38,6 @@ public class DiskInfo {
 	}
 
 	public double getdiskReadRate() {
-		startCompute();
 		return diskReadRate;
 	}
 
@@ -81,7 +81,6 @@ public class DiskInfo {
 						}
 						buff.close();
 					} catch (FileNotFoundException e) {
-						e.printStackTrace();
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

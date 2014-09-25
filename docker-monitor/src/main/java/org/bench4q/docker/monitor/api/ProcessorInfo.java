@@ -23,11 +23,14 @@ public class ProcessorInfo {
 			.compile("processor");
 	private int processorCount;
 	private static int vcpuRatio;
+	private static long sleepTime = 1000;
 	
 	public ProcessorInfo(){
+		size = 0;
 		initPidList();
 		processorCount = getProcessorCount();
 		vcpuRatio = getVCpuRatio();
+		startCompute();
 	}
 	
 	private int getVCpuRatio(){
@@ -56,7 +59,6 @@ public class ProcessorInfo {
 			}
 			br.close();
 		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -77,19 +79,25 @@ public class ProcessorInfo {
 		this.size = size;
 	}
 
-	public int getSize() throws IOException {
+	public int getSize(){
+		if(size != 0 )
+			return size;
 		FileReader fr = null;
-		int pSize = 0;
-		fr = new FileReader("/proc//cpuinfo");
-		BufferedReader buff = new BufferedReader(fr);
-		String line;
-		while ((line = buff.readLine()) != null) {
-			String[] array = line.split("\\s+");
-			if (array[0].equals("processor"))
-				pSize++;
+		try {
+			fr = new FileReader("/proc//cpuinfo");
+			BufferedReader buff = new BufferedReader(fr);
+			String line;
+			while ((line = buff.readLine()) != null) {
+				String[] array = line.split("\\s+");
+				if (array[0].equals("processor"))
+					size++;
+			}
+			buff.close();
+		} catch (FileNotFoundException e) {
+		} catch (IOException e){
+			e.printStackTrace();
 		}
-		buff.close();
-		return pSize;
+		return size;
 	}
 	
 	public void startCompute(){
@@ -100,7 +108,7 @@ public class ProcessorInfo {
 	}
 	
 	class Handler extends Thread{
-		private void compute() throws NumberFormatException, IOException{
+		private void compute() throws NumberFormatException{
 			double[] uTime = new double[] { 0, 0 };
 			double[] sTime = new double[] { 0, 0 };
 			double[] cuTime = new double[] { 0, 0 };
@@ -115,26 +123,31 @@ public class ProcessorInfo {
 				for(int pid : pidList){
 					url = "/proc/"+pid+"/stat";
 					FileReader fr = null;
-					fr = new FileReader(url);
-					BufferedReader buff = new BufferedReader(fr);
-					String line;
-					while ((line = buff.readLine()) != null) {
-						String[] array = line.trim().split("\\s+");
-						uTime[1] += Double.valueOf(array[13]);
-						sTime[1] += Double.valueOf(array[14]);
-						cuTime[1] += Double.valueOf(array[15]);
-						csTime[1] += Double.valueOf(array[16]);
-						break;
+					try {
+						fr = new FileReader(url);
+						BufferedReader buff = new BufferedReader(fr);
+						String line;
+						while ((line = buff.readLine()) != null) {
+							String[] array = line.trim().split("\\s+");
+							uTime[1] += Double.valueOf(array[13]);
+							sTime[1] += Double.valueOf(array[14]);
+							cuTime[1] += Double.valueOf(array[15]);
+							csTime[1] += Double.valueOf(array[16]);
+							break;
+						}
+						buff.close();
+					} catch (FileNotFoundException e) {
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-					buff.close();
 				}
-				processorTimePercent = (uTime[1] + sTime[1] + cuTime[1]
-						+ csTime[1] - uTime[0] - sTime[0] - cuTime[0] - csTime[0]) / 200;
+				processorTimePercent = ((uTime[1] + sTime[1] + cuTime[1]
+						+ csTime[1] - uTime[0] - sTime[0] - cuTime[0] - csTime[0]) / sleepTime) / getSize();
 				processorTimePercent = Math.min(1.0, 
 						processorTimePercent * processorCount * vcpuRatio);
 				try {
 					Thread.currentThread();
-					Thread.sleep(2000);
+					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -146,14 +159,11 @@ public class ProcessorInfo {
 				compute();
 			} catch (NumberFormatException e) {
 				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 		}
 	}
 	
 	public double getProcessorTimePercent(){
-		startCompute();
 		return processorTimePercent;
 	}
 

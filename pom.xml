@@ -40,11 +40,6 @@
 		<artifactId>httpclient</artifactId>
 		<version>4.3.5</version>
     </dependency>
-    <dependency>
-		<groupId>xstream</groupId>
-		<artifactId>xstream</artifactId>
-		<version>1.2.2</version>
-	</dependency>
 	<dependency>
 		<groupId>org.bench4q</groupId>
 		<artifactId>bench4q-share</artifactId>
