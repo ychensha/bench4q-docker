@@ -106,6 +106,8 @@ public class ContainerController {
 		int result = 0;
 		try {
 			while(result == 0){
+				if(checkCount > 30)
+					break;
 				response = httpRequester.sendGet(agent.getHostName()
 						+ ":" + agent.getPort(), null, null);
 //				checkCount++;
@@ -114,6 +116,7 @@ public class ContainerController {
 				result = response.getCode();
 				Thread.currentThread();
 				Thread.sleep(1000);
+				checkCount++;
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
