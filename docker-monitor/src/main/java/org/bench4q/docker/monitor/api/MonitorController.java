@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 @RequestMapping("/monitor")
 public class MonitorController {
-
+	MemoryInfo memoryInfo = new MemoryInfo();
+	NetworkInfo networkInfo = new NetworkInfo();
+	ProcessorInfo processorInfo = new ProcessorInfo();
+	DiskInfo diskInfo = new DiskInfo();
 	@RequestMapping("/all")
 	@ResponseBody
 	public MonitorMain getMainModel(){
@@ -32,7 +35,6 @@ public class MonitorController {
 	@RequestMapping("/physicalDisk")
 	@ResponseBody
 	public PhysicalDiskModel getPhysicalDiskModel(){
-		DiskInfo diskInfo = new DiskInfo();
 		PhysicalDiskModel result = new PhysicalDiskModel();
 		result.setDiskReadKBytesRate(diskInfo.getdiskReadRate());
 		result.setDiskWriteKBytesRate(diskInfo.getdiskWriteRate());
@@ -43,7 +45,6 @@ public class MonitorController {
 	@ResponseBody
 	public MemoryModel getMemoryModel(){
 		MemoryModel result = new MemoryModel();
-		MemoryInfo memoryInfo = new MemoryInfo();
 		result.setTotalKiloBytes(memoryInfo.getTotalKiloBytes());
 		result.setMemoryUsedPercent(memoryInfo.getMemoryUsedPercent());
 		return result;
@@ -52,7 +53,6 @@ public class MonitorController {
 	@ResponseBody
 	public NetworkInterfaceModel getNetworkInterfaceModel(){
 		NetworkInterfaceModel result = new NetworkInterfaceModel();
-		NetworkInfo networkInfo = new NetworkInfo();
 		result.setKiloBytesTotalPerSecond(networkInfo.getKiloBytesTotalPerSecond());
 		result.setKiloBytesReceivedPerSecond(networkInfo.getKiloBytesReceivedPerSecond());
 		result.setKiloBytesSentPerSecond(networkInfo.getKiloBytesSentPerSecond());
@@ -62,8 +62,8 @@ public class MonitorController {
 	@ResponseBody
 	public ProcessorModel getProcessorModel(){
 		ProcessorModel result = new ProcessorModel();
-		ProcessorInfo processorInfo = new ProcessorInfo();
 		result.setProcessorTimePercent(processorInfo.getProcessorTimePercent());
+		result.setSize(processorInfo.getSize());
 		return result;
 	}
 }

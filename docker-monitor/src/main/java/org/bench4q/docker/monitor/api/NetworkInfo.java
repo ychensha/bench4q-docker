@@ -2,6 +2,7 @@ package org.bench4q.docker.monitor.api;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ public class NetworkInfo {
 	
 	public NetworkInfo(){
 		initPidList();
+		startCompute();
 	}
 	private void initPidList(){
 		pidList = new ArrayList<Integer>();
@@ -37,7 +39,6 @@ public class NetworkInfo {
 	}
 
 	public double getKiloBytesTotalPerSecond() {
-		startCompute();
 		return kiloBytesTotalPerSecond;
 	}
 
@@ -64,7 +65,7 @@ public class NetworkInfo {
 	}
 
 	class Handler extends Thread {
-		private void compute() throws NumberFormatException, IOException {
+		private void compute() throws NumberFormatException {
 			double[] receive = new double[] { 0, 0 };
 			double[] send = new double[] { 0, 0 };
 			String url = null;
@@ -75,21 +76,27 @@ public class NetworkInfo {
 				send[1] = receive[1] = 0;
 				for(int pid : pidList){
 					url = "/proc/" + pid + "/net/dev";
-					fr = new FileReader(url);
-					BufferedReader buff = new BufferedReader(fr);
-					String line;
-					while ((line = buff.readLine()) != null) {
-						String[] array = line.trim().split("\\s+");
-						if (array[0].equals("eth0:")) {
-							receive[1] += Double.valueOf(array[1]);
-							send[1] += Double.valueOf(array[9]);
-							break;
+					try {
+						fr = new FileReader(url);
+						BufferedReader buff = new BufferedReader(fr);
+						String line;
+						while ((line = buff.readLine()) != null) {
+							String[] array = line.trim().split("\\s+");
+							if (array[0].equals("eth0:")) {
+								receive[1] += Double.valueOf(array[1]);
+								send[1] += Double.valueOf(array[9]);
+								break;
+							}
 						}
+						buff.close();
+					} catch (FileNotFoundException e) {
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-					buff.close();
+					
 				}
-				kiloBytesReceivedPerSecond = (receive[1] - receive[0]);
-				kiloBytesSentPerSecond = (send[1] - send[0]);
+				kiloBytesReceivedPerSecond = (receive[1] - receive[0]) / 1000;
+				kiloBytesSentPerSecond = (send[1] - send[0]) / 1000;
 				kiloBytesTotalPerSecond = (kiloBytesReceivedPerSecond
 						+ kiloBytesSentPerSecond);
 				try {
@@ -107,9 +114,7 @@ public class NetworkInfo {
 				compute();
 			} catch (NumberFormatException e) {
 				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			} 
 		}
 	}
 }

@@ -48,7 +48,6 @@ public class MemoryInfo {
 			
 			buff.close();
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -77,7 +76,7 @@ public class MemoryInfo {
 			}
 			buff.close();
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
