@@ -1,7 +1,6 @@
 package org.bench4q.docker.api;
 
 import java.io.IOException;
-import java.util.List;
 
 import javax.xml.bind.JAXBException;
 
@@ -13,7 +12,7 @@ import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.bench4q.share.models.mainframe.MainFrameDockerResponseModel;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,18 +76,19 @@ public class ContainerController {
 
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
 	@ResponseBody
-	public AgentModel createContainer(@RequestBody ResourceInfo resource) {
-		AgentModel result = setAgentCreated(controller
-				.createContainerAndSetCpuQuota(setRequestResource(resource)));
-		if (result != null)
-			result.setResourceInfo(resource);
-		int response = checkAgent(result);
+	public MainFrameDockerResponseModel createContainer(@RequestBody ResourceInfo resource) {
+		AgentModel agentModel = setAgentCreated(controller
+				.createContainerAndSetCpuQuota(setRequestResource(resource)), resource);
+		if(agentModel == null){
+			return setResponseModel(false, "docker create container fail", null);
+		}
+		int	response = checkAgent(agentModel);
 		if(response == 0){
 			System.out.println("agent is not aval.");
-			return null;
+			return setResponseModel(false, "start agent fail", null);
 		}
 		System.out.println("agent starts up.");
-		return result;
+		return setResponseModel(true, null, agentModel);
 	}
 
 	@RequestMapping(value = "/remove")
@@ -99,20 +99,29 @@ public class ContainerController {
 		return result;
 	}
 
+	private MainFrameDockerResponseModel setResponseModel(boolean isSuccess,
+			String failCauseString, AgentModel agentModel) {
+		MainFrameDockerResponseModel responseModel = new MainFrameDockerResponseModel();
+		responseModel.setSuccess(isSuccess);
+		responseModel.setFailCauseString(failCauseString);
+		responseModel.setAgentModel(agentModel);
+		return responseModel;
+	}
+
 	private int checkAgent(AgentModel agent) {
 		HttpResponse response = null;
 		int checkCount = 0;
 		long startTime = System.currentTimeMillis();
 		int result = 0;
 		try {
-			while(result == 0){
-				if(checkCount > 30)
+			while (result == 0) {
+				if (checkCount > 30)
 					break;
-				response = httpRequester.sendGet(agent.getHostName()
-						+ ":" + agent.getPort(), null, null);
-//				checkCount++;
-//				if(response.getCode() != 0)
-//					return response.getCode();
+				response = httpRequester.sendGet(agent.getHostName() + ":"
+						+ agent.getPort(), null, null);
+				// checkCount++;
+				// if(response.getCode() != 0)
+				// return response.getCode();
 				result = response.getCode();
 				Thread.currentThread();
 				Thread.sleep(1000);
@@ -124,7 +133,8 @@ public class ContainerController {
 			e.printStackTrace();
 		}
 		long endTime = System.currentTimeMillis();
-		System.out.println("check the agent takes: " + (endTime-startTime)/1000 + " s.");
+		System.out.println("check the agent takes: " + (endTime - startTime)
+				/ 1000 + " s.");
 		return result;
 	}
 
@@ -150,7 +160,8 @@ public class ContainerController {
 		return requestResource;
 	}
 
-	private AgentModel setAgentCreated(Container container) {
+	private AgentModel setAgentCreated(Container container,
+			ResourceInfo resource) {
 		if (container == null)
 			return null;
 		AgentModel agent = new AgentModel();
@@ -158,6 +169,7 @@ public class ContainerController {
 		agent.setPort(Integer.valueOf(container.getPort()));
 		agent.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
 		agent.setId(container.getId());
+		agent.setResourceInfo(resource);
 		return agent;
 	}
 
