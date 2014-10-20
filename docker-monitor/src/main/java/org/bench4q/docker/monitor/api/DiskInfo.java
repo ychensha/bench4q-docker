@@ -82,7 +82,6 @@ public class DiskInfo {
 						buff.close();
 					} catch (FileNotFoundException e) {
 					} catch (IOException e) {
-						e.printStackTrace();
 					}
 				}
 				diskReadRate = (read[1] - read[0]);

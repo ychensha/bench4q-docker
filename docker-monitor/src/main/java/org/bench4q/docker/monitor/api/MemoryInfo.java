@@ -56,10 +56,6 @@ public class MemoryInfo {
 		return totalKiloBytes;
 	}
 	
-	private void setTotalKiloBytes(long totalKiloBytes) {
-		this.totalKiloBytes=totalKiloBytes;
-	}
-	
 	private long getUsedMemory(int pId){
 		FileReader fr = null;
 		String url = "/proc/" + pId + "/status";
@@ -93,17 +89,7 @@ public class MemoryInfo {
 		return result;
 	}
 	
-	private void setUsedMomery(long usedMomery) {
-		this.usedMemory = usedMomery;
-	}
-	
-	
 	public double getMemoryUsedPercent(){
 		return (double)this.getUsedMemory()/this.getTotalKiloBytes();
 	} 
-	
-	private void setMemoryUsedPercent(double memoryUsedPercent) {
-		this.memoryUsedPercent = memoryUsedPercent;
-	}
-	
 }

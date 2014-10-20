@@ -1,5 +1,6 @@
 package org.bench4q.docker;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -14,7 +15,6 @@ import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.google.gson.FieldNamingPolicy;
@@ -68,44 +68,20 @@ public class TestResourceController {
 	public Resource getCurrentResourceStatus() {
 		return ResourceNode.getInstance().getCurrentStatus();
 	}
-
-	/**
-	 * @return the container created
-	 */
-	// public Container createContainer(RequestResource resource){
-	// Container container = new Container();
-	// String poolResponse =
-	// ResourceNode.getInstance().requestResource(resource);
-	//
-	// if(poolResponse != null){
-	// container.setId(createContainerAndSetUploadBandwidth(resource,
-	// poolResponse));
-	// }
-	// else
-	// return null;
-	//
-	// if(container.getId() != null){
-	// if(startContainerByIdAndSetLxcConfig(container.getId(), resource,
-	// poolResponse)
-	// == 0)
-	// return null;
-	// }
-	// setContainerDownloadBandWidth(resource);
-	// return inspectContainer(container.getId());
-	// }
-
-	public Container createContainerAndSetCpuQuota(RequestResource resource) {
+	
+	public Container createTestContainer(RequestResource resource,
+			String imageName, List<String> cmds) {
 		Container container = new Container();
-		String poolResponse = ResourceNode.getInstance().requestResource(
-				resource);
-		System.out.println("get resourcNode response.");
-		if (poolResponse == null)
+		String cpuSet = ResourceNode.getInstance().requestResource(resource);
+		System.out.println("get resourceNode response.");
+		if (cpuSet == null)
 			return null;
-		container.setId(createContainerAndSetUploadBandwidth(resource,
-				poolResponse));
+		resource.setCpuSet(cpuSet);
+		container
+				.setId(createContainerAndSetUploadBandwidth(getCreateContainerWithSetting(
+						resource, imageName, cmds)));
 		System.out.println("create finish.");
-		resource.setCpuNumber(ResourceNode.getInstance().getCpuQuota(
-				poolResponse));
+		resource.setCpuQuota(ResourceNode.getInstance().getCpuQuota(cpuSet));
 		if (container.getId() != null) {
 			if (!startContainerByIdAndSetLxcConfigWithQuota(container.getId(),
 					resource))
@@ -118,8 +94,16 @@ public class TestResourceController {
 		container.setIp(getHostInet4Address("eth0"));
 		return container;
 	}
-	
-	private String getHostInet4Address(String name){
+
+	public Container createContainerAndSetCpuQuota(RequestResource resource) {
+		List<String> cmds = new ArrayList<String>();
+		cmds.add("/bin/sh");
+		cmds.add("-c");
+		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
+		return createTestContainer(resource, IMAGE_NAME, cmds);
+	}
+
+	private String getHostInet4Address(String name) {
 		String result = null;
 		Enumeration<NetworkInterface> netInterfaces = null;
 		try {
@@ -132,7 +116,7 @@ public class TestResourceController {
 				Enumeration<InetAddress> ips = ni.getInetAddresses();
 				while (ips.hasMoreElements()) {
 					String address = ips.nextElement().getHostAddress();
-					if(address.split("\\.").length ==4)
+					if (address.split("\\.").length == 4)
 						result = address;
 				}
 			}
@@ -141,43 +125,6 @@ public class TestResourceController {
 		}
 		return result;
 	}
-
-	//
-	// private String createContainerAndSetUploadBandwidth(RequestResource
-	// resource){
-	// String id = null;
-	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
-	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
-	// CreateContainer createContainer = new CreateContainer();
-	// List<String> cmds = new ArrayList<String>();
-	// String startupCmd = "";
-	// cmds.add("/bin/sh");
-	// cmds.add("-c");
-	// cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-	// if(resource.getUploadBandwidthKBit() != 0)
-	// startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
-	// cmds.add(startupCmd);
-	// createContainer.setImage(IMAGE_NAME);
-	// createContainer.setCmd(cmds);
-	// HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer),
-	// ContentType.APPLICATION_JSON);
-	// httpPost.setEntity(httpEntity);
-	// try {
-	// CloseableHttpResponse response = httpClient.execute(httpPost);
-	// if(response.getStatusLine().getStatusCode() ==
-	// CREATE_CONTAINER_SUCCESS_CODE){
-	// id = EntityUtils.toString(response.getEntity(), "utf-8");
-	// CreateContainerResponse createContainerResponse = gson.fromJson(id,
-	// CreateContainerResponse.class);
-	// id = createContainerResponse.getId();
-	// }
-	// } catch (ClientProtocolException e) {
-	// e.printStackTrace();
-	// } catch (IOException e) {
-	// e.printStackTrace();
-	// }
-	// return id;
-	// }
 
 	private boolean startContainerByIdAndSetLxcConfigWithQuota(
 			String containerId, RequestResource resource) {
@@ -202,7 +149,9 @@ public class TestResourceController {
 	private Map<String, String> getContainerLxcConfigWithQuota(
 			RequestResource resource) {
 		Map<String, String> result = new HashMap<String, String>();
-		result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuNumber()));
+		if (resource.getCpuQuota() > 0) {
+			result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuQuota()));
+		}
 		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
 		// Properties prop = new Properties();
 		// try {
@@ -220,18 +169,6 @@ public class TestResourceController {
 		return result;
 	}
 
-	// private Map<String, String> getContainerLxcConfig(RequestResource
-	// resource, String cpuset){
-	// Map<String, String> result = new HashMap<String, String>();
-	// result.put(LXC_CPUSET_CPUS, cpuset);
-	// result.put(LXC_MEMORY_LIMIT_IN_BYTES,
-	// String.valueOf(resource.getMemoryLimitKB() * 1024));
-	// result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
-	// if(VETHID == 0)
-	// VETHID = 1;
-	// return result;
-	// }
-
 	private void setContainerDownloadBandWidth(RequestResource resource) {
 		if (resource.getDownloadBandwidthKByte() == 0)
 			return;
@@ -248,28 +185,6 @@ public class TestResourceController {
 		}
 	}
 
-	// private int startContainerByIdAndSetLxcConfig(String id, RequestResource
-	// resource, String cpuset){
-	// StartContainer startContainer = new StartContainer();
-	// List<String> ports = new ArrayList<String>();
-	// ports.add("0");
-	// startContainer.setLxcConf(getContainerLxcConfig(resource, cpuset));
-	// startContainer.setPortbindings(ports);
-	// startContainer.setPrivileged(true);
-	//
-	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
-	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
-	// +"/containers/" + id + "/start");
-	// HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer),
-	// ContentType.APPLICATION_JSON);
-	// httpPost.setEntity(httpEntity);
-	//
-	// if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
-	// return 1;
-	// else
-	// return 0;
-	// }
-
 	private String getTcCmd(String device, long bandwidthLimit) {
 		return "sudo tc qdisc add dev " + device + " root tbf rate "
 				+ bandwidthLimit * 8
@@ -277,33 +192,28 @@ public class TestResourceController {
 	}
 
 	private CreateContainer getCreateContainerWithSetting(
-			RequestResource resource, String cpuset) {
+			RequestResource resource, String imageName, List<String> cmds) {
 		CreateContainer result = new CreateContainer();
-		List<String> cmds = new ArrayList<String>();
-		String startupCmd = "";
-		cmds.add("/bin/sh");
-		cmds.add("-c");
-		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-		if (resource.getUploadBandwidthKByte() != 0)
-			startupCmd += ""
-					+ getTcCmd("eth0", resource.getUploadBandwidthKByte());
-		cmds.add(startupCmd);
+		if (resource.getUploadBandwidthKByte() != 0) {
+			String startupCmd = getTcCmd("eth0",
+					resource.getUploadBandwidthKByte());
+			cmds.add(startupCmd);
+		}
 		result.setCmd(cmds);
-		result.setImage(IMAGE_NAME);
-		result.setCpuset(cpuset);
+		result.setImage(imageName);
+		result.setCpuset(resource.getCpuSet());
 		result.setMemory(resource.getMemoryLimitKB() * 1024);
 		return result;
 	}
 
 	private String createContainerAndSetUploadBandwidth(
-			RequestResource resource, String cpuset) {
+			CreateContainer createContainer) {
 		String result = null;
 		try {
 			System.out.println("starting call docker api create.");
 			HttpResponse response = httpRequester.sendPostJson(DOCKER_HOST_NAME
-					+ ":" + DOCKER_HOST_PORT + "/containers/create", gson
-					.toJson(getCreateContainerWithSetting(resource, cpuset)),
-					null);
+					+ ":" + DOCKER_HOST_PORT + "/containers/create",
+					gson.toJson(createContainer), null);
 			System.out.println("get docker creation response");
 			if (response.getCode() == CREATE_CONTAINER_SUCCESS_CODE) {
 				CreateContainerResponse createContainerResponse = gson
@@ -353,8 +263,19 @@ public class TestResourceController {
 	 * @return true if succeed
 	 */
 	public boolean remove(Container container) {
+		guardLogDirectoryExist();
+		makeContainerLogDir(container.getId());
+		try {
+
+			Runtime.getRuntime().exec(
+					"docker cp " + container.getId() + ":/logs/log.log "
+							+ "/usr/share/bench4q-docker/log/"
+							+ container.getId());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		if (killContainerPost(container) == KILL_CONTAINER_SUCCESS_CODE
-				&& removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE) {
+				| removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE) {
 			if (ResourceNode.getInstance() != null)
 				ResourceNode.getInstance().releaseResource(container);
 			return true;
@@ -363,16 +284,33 @@ public class TestResourceController {
 		}
 	}
 
+	private void makeContainerLogDir(String id) {
+		File dir = new File("/usr/share/bench4q-docker/log/" + id);
+		if (dir.exists()) {
+			System.out.println("container log dir existing");
+			return;
+		}
+		dir.mkdir();
+	}
+
+	private void guardLogDirectoryExist() {
+		File dir = new File("/usr/share/bench4q-docker/log");
+		if (!dir.exists()) {
+			if (!dir.mkdirs())
+				System.out.println("make service log dir fail");
+		}
+	}
+
 	private int killContainerPost(Container container) {
 		HttpResponse response = null;
 		try {
-			response = httpRequester.sendPostJson(DOCKER_HOST_NAME + ":" + DOCKER_HOST_PORT + "/containers/"
-					+ container.getId() + "/kill", null,
-					null);
+			response = httpRequester.sendPostJson(DOCKER_HOST_NAME + ":"
+					+ DOCKER_HOST_PORT + "/containers/" + container.getId()
+					+ "/kill", null, null);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if(response != null)
+		if (response != null)
 			return response.getCode();
 		else
 			return 0;
@@ -382,12 +320,12 @@ public class TestResourceController {
 		HttpResponse response = null;
 		try {
 			response = httpRequester.sendDelete(DOCKER_HOST_NAME + ":"
-					+ DOCKER_HOST_PORT + "/containers/" + container.getId(), null,
-					null);
+					+ DOCKER_HOST_PORT + "/containers/" + container.getId(),
+					null, null);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if(response != null)
+		if (response != null)
 			return response.getCode();
 		else
 			return 0;
@@ -396,10 +334,11 @@ public class TestResourceController {
 	public List<Container> getContainerList() {
 		List<Container> result = new ArrayList<Container>();
 		try {
-			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME + ":"
-				+ DOCKER_HOST_PORT + "/containers/json", null, null);
-			result = gson.fromJson(response.getContent(), new TypeToken<List<Container>>() {
-			}.getType());
+			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME
+					+ ":" + DOCKER_HOST_PORT + "/containers/json", null, null);
+			result = gson.fromJson(response.getContent(),
+					new TypeToken<List<Container>>() {
+					}.getType());
 		} catch (ParseException e) {
 			e.printStackTrace();
 		} catch (ClientProtocolException e) {
@@ -409,4 +348,98 @@ public class TestResourceController {
 		}
 		return result;
 	}
+	/**
+	 * @return the container created
+	 */
+	// public Container createContainer(RequestResource resource){
+	// Container container = new Container();
+	// String poolResponse =
+	// ResourceNode.getInstance().requestResource(resource);
+	//
+	// if(poolResponse != null){
+	// container.setId(createContainerAndSetUploadBandwidth(resource,
+	// poolResponse));
+	// }
+	// else
+	// return null;
+	//
+	// if(container.getId() != null){
+	// if(startContainerByIdAndSetLxcConfig(container.getId(), resource,
+	// poolResponse)
+	// == 0)
+	// return null;
+	// }
+	// setContainerDownloadBandWidth(resource);
+	// return inspectContainer(container.getId());
+	// }
+	//
+	// private String createContainerAndSetUploadBandwidth(RequestResource
+	// resource){
+	// String id = null;
+	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
+	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
+	// CreateContainer createContainer = new CreateContainer();
+	// List<String> cmds = new ArrayList<String>();
+	// String startupCmd = "";
+	// cmds.add("/bin/sh");
+	// cmds.add("-c");
+	// cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
+	// if(resource.getUploadBandwidthKBit() != 0)
+	// startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
+	// cmds.add(startupCmd);
+	// createContainer.setImage(IMAGE_NAME);
+	// createContainer.setCmd(cmds);
+	// HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer),
+	// ContentType.APPLICATION_JSON);
+	// httpPost.setEntity(httpEntity);
+	// try {
+	// CloseableHttpResponse response = httpClient.execute(httpPost);
+	// if(response.getStatusLine().getStatusCode() ==
+	// CREATE_CONTAINER_SUCCESS_CODE){
+	// id = EntityUtils.toString(response.getEntity(), "utf-8");
+	// CreateContainerResponse createContainerResponse = gson.fromJson(id,
+	// CreateContainerResponse.class);
+	// id = createContainerResponse.getId();
+	// }
+	// } catch (ClientProtocolException e) {
+	// e.printStackTrace();
+	// } catch (IOException e) {
+	// e.printStackTrace();
+	// }
+	// return id;
+	// }
+
+	// private Map<String, String> getContainerLxcConfig(RequestResource
+	// resource, String cpuset){
+	// Map<String, String> result = new HashMap<String, String>();
+	// result.put(LXC_CPUSET_CPUS, cpuset);
+	// result.put(LXC_MEMORY_LIMIT_IN_BYTES,
+	// String.valueOf(resource.getMemoryLimitKB() * 1024));
+	// result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+	// if(VETHID == 0)
+	// VETHID = 1;
+	// return result;
+	// }
+
+	// private int startContainerByIdAndSetLxcConfig(String id, RequestResource
+	// resource, String cpuset){
+	// StartContainer startContainer = new StartContainer();
+	// List<String> ports = new ArrayList<String>();
+	// ports.add("0");
+	// startContainer.setLxcConf(getContainerLxcConfig(resource, cpuset));
+	// startContainer.setPortbindings(ports);
+	// startContainer.setPrivileged(true);
+	//
+	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
+	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
+	// +"/containers/" + id + "/start");
+	// HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer),
+	// ContentType.APPLICATION_JSON);
+	// httpPost.setEntity(httpEntity);
+	//
+	// if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
+	// return 1;
+	// else
+	// return 0;
+	// }
 }

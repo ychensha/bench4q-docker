@@ -4,6 +4,7 @@ import org.bench4q.docker.monitor.api.DiskInfo;
 import org.bench4q.docker.monitor.api.MemoryInfo;
 import org.bench4q.docker.monitor.api.NetworkInfo;
 import org.bench4q.docker.monitor.api.ProcessorInfo;
+import org.bench4q.share.models.monitor.JvmModel;
 import org.bench4q.share.models.monitor.MemoryModel;
 import org.bench4q.share.models.monitor.MonitorMain;
 import org.bench4q.share.models.monitor.NetworkInterfaceModel;
@@ -21,6 +22,8 @@ public class MonitorController {
 	NetworkInfo networkInfo = new NetworkInfo();
 	ProcessorInfo processorInfo = new ProcessorInfo();
 	DiskInfo diskInfo = new DiskInfo();
+	JvmInfo jvmInfo = new JvmInfo();
+	
 	@RequestMapping("/all")
 	@ResponseBody
 	public MonitorMain getMainModel(){
@@ -29,6 +32,7 @@ public class MonitorController {
 		result.setNetworkInterfaceModel(getNetworkInterfaceModel());
 		result.setPhysicalDiskModel(getPhysicalDiskModel());
 		result.setProcessorModel(getProcessorModel());
+		result.setJvmModel(getJvmModel());
 		return result;
 	}
 	
@@ -65,5 +69,10 @@ public class MonitorController {
 		result.setProcessorTimePercent(processorInfo.getProcessorTimePercent());
 		result.setSize(processorInfo.getSize());
 		return result;
+	}
+	@RequestMapping("/jvm")
+	@ResponseBody
+	public JvmModel getJvmModel(){
+		return jvmInfo.getJvmInfo();
 	}
 }

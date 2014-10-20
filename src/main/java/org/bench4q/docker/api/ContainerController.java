@@ -1,6 +1,8 @@
 package org.bench4q.docker.api;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.bind.JAXBException;
 
@@ -14,6 +16,7 @@ import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.*;
 import org.bench4q.share.models.mainframe.MainFrameDockerResponseModel;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -25,47 +28,111 @@ public class ContainerController {
 	private static final TestResourceController controller = new TestResourceController();
 	private HttpRequester httpRequester = new HttpRequester();
 
-	public static void main(String[] args) {
-		ResourceInfo requiredResource = new ResourceInfo();
-		requiredResource.setCpu(2);
-		requiredResource.setMemoryKB(1048576);// 256MB
-		requiredResource.setDownloadBandwidthKByte(1000);
-		requiredResource.setUploadBandwidthKByte(1000);
-		HttpRequester httpRequester = new HttpRequester();
-		HttpResponse response;
-		try {
-			for (int i = 0; i < 1; ++i) {
-				response = httpRequester.sendPostXml(
-						"133.133.134.153:5656/docker/create", MarshalHelper
-								.marshal(ResourceInfo.class, requiredResource),
-						null);
-				System.out.println(response.getContent());
-				AgentModel agent = (AgentModel) MarshalHelper.unmarshal(
-						AgentModel.class, response.getContent());
-				if (agent != null) {
-					System.out.println(agent.getId());
-					System.out.println(agent.getHostName());
-					System.out.println(agent.getPort());
-					System.out.println(agent.getMonitorPort());
-					response = httpRequester.sendPostXml(
-							"133.133.134.153:5656/docker/remove",
-							MarshalHelper.marshal(AgentModel.class, agent),
-							null);
+	private String buildBaseUrl() {
+		return "133.133.134.153:5656/docker";
+	}
+
+	public void removeContainers(List<AgentModel> agents) {
+		if (agents != null) {
+			for (AgentModel agent : agents) {
+				try {
+					HttpResponse response = httpRequester.sendPostXml(
+							buildBaseUrl() + "/remove",
+							MarshalHelper.marshal(AgentModel.class, agent), null);
 					MainFrameResponseModel model = (MainFrameResponseModel) MarshalHelper
 							.unmarshal(MainFrameResponseModel.class,
 									response.getContent());
 					if (model.isSuccess()) {
 						System.out.println("remove " + agent.getId());
 					}
-				} else {
-					System.out.println("fail");
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (JAXBException e) {
+					e.printStackTrace();
 				}
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (JAXBException e) {
-			e.printStackTrace();
 		}
+	}
+	
+	public List<AgentModel> createContainers(List<ResourceInfo> resourceInfoList){
+		List<AgentModel> result = new ArrayList<AgentModel>();
+		if(resourceInfoList != null){
+			for(ResourceInfo resourceInfo : resourceInfoList){
+				HttpResponse response;
+				try {
+					response = httpRequester
+							.sendPostXml(
+									buildBaseUrl() + "/createTestContainer",
+									MarshalHelper.marshal(ResourceInfo.class,
+											resourceInfo), null);
+					MainFrameDockerResponseModel dockerResponse = (MainFrameDockerResponseModel) MarshalHelper
+							.unmarshal(MainFrameDockerResponseModel.class,
+									response.getContent());
+					if (dockerResponse.isSuccess()) {
+						AgentModel agent = dockerResponse.getAgentModel();
+						result.add(agent);
+						System.out.println(agent.getId());
+						System.out.println(agent.getPort());
+						System.out.println(agent.getMonitorPort());
+					} else {
+						System.out.println("create fail");
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (JAXBException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return result;
+	}
+
+	public static void main(String[] args) {
+		ContainerController testController = new ContainerController();
+		
+		ResourceInfo resourceInfo = new ResourceInfo();
+		resourceInfo.setCpu(4);
+		resourceInfo.setMemoryKB(512 * 1024);
+		resourceInfo.setDownloadBandwidthKByte(0);
+		resourceInfo.setUploadBandwidthKByte(0);
+		resourceInfo.setImageName("chensha/docker");
+		List<String> cmds = new ArrayList<String>();
+		cmds.add("/bin/sh");
+		cmds.add("-c");
+		cmds.add("/opt/monitor/*.sh&&java -jar -server /opt/bench4q-agent-publish/*.java");
+//		cmds.add("java -jar /opt/monitor/bench4q-docker-monitor.jar");
+//		cmds.add("java -jar -server -Xms1024M -Xmx1024M /opt/bench4q-agent-publish/*.jav&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
+		// cmds.add("/opt/empty-jetty/start.sh");
+		// cmds.add("java -jar /opt/empty-jetty/empty-jetty-server.jar");
+		resourceInfo.setCmds(cmds);
+		
+		List<ResourceInfo> resourceInfoList = new ArrayList<ResourceInfo>();
+		for(int i = 0; i < 1; i++){
+			resourceInfoList.add(resourceInfo);
+		}
+		List<AgentModel> agents = testController.createContainers(resourceInfoList);
+		testController.removeContainers(agents);
+	}
+
+	@RequestMapping(value = "/createTestContainer", method = RequestMethod.POST)
+	@ResponseBody
+	public MainFrameDockerResponseModel createTestContainer(
+			@RequestBody ResourceInfo resource) {
+		System.out.println(MarshalHelper.tryMarshal(resource));
+		AgentModel agentModel = setAgentCreated(controller.createTestContainer(
+				setRequestResource(resource), resource.getImageName(),
+				resource.getCmds()), resource);
+		if (agentModel == null) {
+			return setResponseModel(false, "docker create container fail", null);
+		}
+		int response = checkAgent(agentModel);
+		if (response == 0) {
+			System.out.println("test container is not aval.");
+			controller.remove(getContainerByAgent(agentModel));
+			return setResponseModel(false, "start agent fail", null);
+		}
+		System.out.println("test container starts up.");
+		return setResponseModel(true, null, agentModel);
 	}
 
 	@RequestMapping(value = "/currentresource", method = RequestMethod.GET)
@@ -76,15 +143,20 @@ public class ContainerController {
 
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
 	@ResponseBody
-	public MainFrameDockerResponseModel createContainer(@RequestBody ResourceInfo resource) {
-		AgentModel agentModel = setAgentCreated(controller
-				.createContainerAndSetCpuQuota(setRequestResource(resource)), resource);
-		if(agentModel == null){
+	public MainFrameDockerResponseModel createContainer(
+			@RequestBody ResourceInfo resource) {
+		System.out.println(MarshalHelper.tryMarshal(resource));
+		AgentModel agentModel = setAgentCreated(
+				controller
+						.createContainerAndSetCpuQuota(setRequestResource(resource)),
+				resource);
+		if (agentModel == null) {
 			return setResponseModel(false, "docker create container fail", null);
 		}
-		int	response = checkAgent(agentModel);
-		if(response == 0){
+		int response = checkAgent(agentModel);
+		if (response == 0) {
 			System.out.println("agent is not aval.");
+			controller.remove(getContainerByAgent(agentModel));
 			return setResponseModel(false, "start agent fail", null);
 		}
 		System.out.println("agent starts up.");
@@ -133,8 +205,8 @@ public class ContainerController {
 			e.printStackTrace();
 		}
 		long endTime = System.currentTimeMillis();
-		System.out.println("check the agent takes: " + (endTime - startTime)
-				/ 1000 + " s.");
+		System.out.println("check the container takes: "
+				+ (float) (endTime - startTime) / 1000 + " s.");
 		return result;
 	}
 
