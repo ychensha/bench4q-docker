@@ -1,4 +1,4 @@
-package org.bench4q.docker;
+package org.bench4q.docker.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,15 +7,12 @@ import com.google.gson.annotations.SerializedName;
 
 
 public class CreateContainer {
-	private String hostName;
-	private String user;
 	private long memory;
 	private long memorySwap;
 	private String cpuset;
 	private boolean attachStdin = false;
 	private boolean attachStdout = false;
 	private boolean attachStderr = false;
-	private int portSpecs = 6565;
 	private ExposedPort exposedPorts;
 	private String image;
 	private String ports;
@@ -49,11 +46,11 @@ public class CreateContainer {
 		this.image = image;
 	}
 
-	public long getMemory() {
+	public long getMemoryByte() {
 		return memory;
 	}
 
-	public void setMemory(long memory) {
+	public void setMemoryByte(long memory) {
 		this.memory = memory;
 	}
 

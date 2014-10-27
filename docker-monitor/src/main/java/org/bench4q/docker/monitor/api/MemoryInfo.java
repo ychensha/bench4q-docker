@@ -8,17 +8,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bench4q.share.master.test.resource.ResourceInfo;
+
 /**
  * @author gengpeng
  *info of each container
  */
 public class MemoryInfo {
-	private long totalKiloBytes;
 	private long usedMemory;
-	private double memoryUsedPercent;
 	private List<Integer> pidList;
+	private ResourceInfo resourceInfo;
 
-	public MemoryInfo(){
+	public MemoryInfo(ResourceInfo resourceInfo){
+		this.resourceInfo = resourceInfo;
 		initPidList();
 	}
 	
@@ -33,30 +35,10 @@ public class MemoryInfo {
 	}
 	
 	public long getTotalKiloBytes(){
-		FileReader fr=null;
-		try {
-			fr = new FileReader("/proc//meminfo");
-			BufferedReader buff=new BufferedReader(fr);
-			String line = null;
-			while((line=buff.readLine()) != null){
-				String[] array = line.split("\\s+");
-				if(array[0].equals("MemTotal:")){
-					this.totalKiloBytes = Long.valueOf(array[1]);
-					break;
-				}
-			}
-			
-			buff.close();
-		} catch (FileNotFoundException e) {
-		} catch (NumberFormatException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return totalKiloBytes;
+		return resourceInfo.getMemoryKB();
 	}
 	
-	private long getUsedMemory(int pId){
+	private long getProcessUsedMemory(int pId){
 		FileReader fr = null;
 		String url = "/proc/" + pId + "/status";
 		try {
@@ -84,7 +66,7 @@ public class MemoryInfo {
 	public long getUsedMemory(){
 		long result = 0;
 		for(int pid : pidList){
-			result += getUsedMemory(pid);
+			result += getProcessUsedMemory(pid);
 		}
 		return result;
 	}

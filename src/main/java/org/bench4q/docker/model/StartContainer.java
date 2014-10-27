@@ -1,4 +1,4 @@
-package org.bench4q.docker;
+package org.bench4q.docker.model;
 
 import java.util.ArrayList;
 import java.util.List;

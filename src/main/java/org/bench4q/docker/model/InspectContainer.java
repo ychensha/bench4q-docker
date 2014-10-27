@@ -1,4 +1,5 @@
-package org.bench4q.docker;
+package org.bench4q.docker.model;
+
 
 
 public class InspectContainer extends Container {
@@ -18,10 +19,6 @@ public class InspectContainer extends Container {
 			return "";
 		}
 	}
-}
-
-class Volumes{
-	
 }
 
 class State{

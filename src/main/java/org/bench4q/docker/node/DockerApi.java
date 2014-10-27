@@ -1,4 +1,4 @@
-package org.bench4q.docker;
+package org.bench4q.docker.node;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,16 +13,23 @@ import java.util.Properties;
 
 import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
+import org.bench4q.docker.model.Container;
+import org.bench4q.docker.model.CreateContainer;
+import org.bench4q.docker.model.InspectContainer;
+import org.bench4q.docker.model.StartContainer;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.springframework.stereotype.Component;
+import org.bench4q.share.helper.MarshalHelper;
+import org.bench4q.share.master.test.resource.AgentModel;
+import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.TestResourceModel;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
-public class TestResourceController {
+public class DockerApi {
 	private static int VETHID = 1;
 	public static String IMAGE_NAME;
 	private static String DOCKER_HOST_NAME;
@@ -34,6 +41,7 @@ public class TestResourceController {
 	private static final int KILL_CONTAINER_SUCCESS_CODE = 204;
 	private static final int REMOVE_CONTAINER_SUCCESS_CODE = 204;
 
+	private static int CPU_CFS_PERIOD_US; 
 	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
 	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
@@ -45,10 +53,10 @@ public class TestResourceController {
 			FieldNamingPolicy.UPPER_CAMEL_CASE).create();
 	private HttpRequester httpRequester = new HttpRequester();
 
-	public TestResourceController() {
+	public DockerApi() {
 		Properties prop = new Properties();
 		try {
-			prop.load(TestResourceController.class.getClassLoader()
+			prop.load(DockerApi.class.getClassLoader()
 					.getResourceAsStream(PROPERTIES_FILE_NAME));
 			DOCKER_HOST_NAME = prop.getProperty("DOCKER_HOST_NAME", "0.0.0.0");
 			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty(
@@ -56,6 +64,7 @@ public class TestResourceController {
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/docker");
 			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
 			VETHID = Integer.valueOf(prop.getProperty("VETHID"));
+			CPU_CFS_PERIOD_US = Integer.valueOf(prop.getProperty("CPU_CFS_PERIOD_US"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -65,42 +74,42 @@ public class TestResourceController {
 	 * 
 	 * @return current resource status
 	 */
-	public Resource getCurrentResourceStatus() {
+	public TestResourceModel getCurrentResourceStatus() {
 		return ResourceNode.getInstance().getCurrentStatus();
 	}
 	
-	public Container createTestContainer(RequestResource resource,
-			String imageName, List<String> cmds) {
-		Container container = new Container();
-		String cpuSet = ResourceNode.getInstance().requestResource(resource);
+	public AgentModel createTestContainer(ResourceInfo resource) {
+		AgentModel result = new AgentModel();
+		resource = ResourceNode.getInstance().requestResource(resource);
 		System.out.println("get resourceNode response.");
-		if (cpuSet == null)
+		if (resource == null)
 			return null;
-		resource.setCpuSet(cpuSet);
-		container
-				.setId(createContainerAndSetUploadBandwidth(getCreateContainerWithSetting(
-						resource, imageName, cmds)));
+		result.setId(createContainerAndSetUploadBandwidth(getCreateContainerWithSetting(resource)));
 		System.out.println("create finish.");
-		resource.setCpuQuota(ResourceNode.getInstance().getCpuQuota(cpuSet));
-		if (container.getId() != null) {
-			if (!startContainerByIdAndSetLxcConfigWithQuota(container.getId(),
+		if (result.getId() != null) {
+			if (!startContainerByIdAndSetLxcConfigWithQuota(result.getId(),
 					resource))
 				return null;
 		}
 		System.out.println("start finish.");
 		setContainerDownloadBandWidth(resource);
 		System.out.println("create container finish.");
-		container = inspectContainer(container.getId());
-		container.setIp(getHostInet4Address("eth0"));
-		return container;
+		Container container = inspectContainer(result.getId());
+		result.setHostName(getHostInet4Address("eth0"));
+		result.setPort(Integer.valueOf(container.getPort()));
+		result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
+		result.setResourceInfo(resource);
+		return result;
 	}
 
-	public Container createContainerAndSetCpuQuota(RequestResource resource) {
+	public AgentModel createContainerAndSetCpuQuota(ResourceInfo resource) {
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
-		cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-		return createTestContainer(resource, IMAGE_NAME, cmds);
+		cmds.add("opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
+					+ "/opt/bench4q-agent-publish/*.jar");
+		resource.setImageName(IMAGE_NAME);
+		return createTestContainer(resource);
 	}
 
 	private String getHostInet4Address(String name) {
@@ -127,7 +136,7 @@ public class TestResourceController {
 	}
 
 	private boolean startContainerByIdAndSetLxcConfigWithQuota(
-			String containerId, RequestResource resource) {
+			String containerId, ResourceInfo resource) {
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
 		ports.add("");
@@ -147,12 +156,16 @@ public class TestResourceController {
 	}
 
 	private Map<String, String> getContainerLxcConfigWithQuota(
-			RequestResource resource) {
+			ResourceInfo resource) {
 		Map<String, String> result = new HashMap<String, String>();
-		if (resource.getCpuQuota() > 0) {
-			result.put(LXC_CPU_QUOTA, String.valueOf(resource.getCpuQuota()));
-		}
+		System.out.println(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio());
+		result.put(LXC_CPU_QUOTA, String.valueOf(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio()));
 		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+		StringBuilder stringBuilder = new StringBuilder();
+		for(int cpuId : resource.getCpuSet()){
+			stringBuilder.append(cpuId).append(",");
+		}
+		result.put(LXC_CPUSET_CPUS, stringBuilder.substring(0, stringBuilder.length() - 1));
 		// Properties prop = new Properties();
 		// try {
 		//
@@ -169,7 +182,7 @@ public class TestResourceController {
 		return result;
 	}
 
-	private void setContainerDownloadBandWidth(RequestResource resource) {
+	private void setContainerDownloadBandWidth(ResourceInfo resource) {
 		if (resource.getDownloadBandwidthKByte() == 0)
 			return;
 		String command = getTcCmd("veth" + (VETHID - 1),
@@ -192,17 +205,16 @@ public class TestResourceController {
 	}
 
 	private CreateContainer getCreateContainerWithSetting(
-			RequestResource resource, String imageName, List<String> cmds) {
+			ResourceInfo resource) {
 		CreateContainer result = new CreateContainer();
 		if (resource.getUploadBandwidthKByte() != 0) {
 			String startupCmd = getTcCmd("eth0",
 					resource.getUploadBandwidthKByte());
-			cmds.add(startupCmd);
+			resource.getCmds().add(startupCmd);
 		}
-		result.setCmd(cmds);
-		result.setImage(imageName);
-		result.setCpuset(resource.getCpuSet());
-		result.setMemory(resource.getMemoryLimitKB() * 1024);
+		result.setCmd(resource.getCmds());
+		result.setImage(resource.getImageName());
+		result.setMemoryByte(resource.getMemoryKB() * 1024);
 		return result;
 	}
 
@@ -216,9 +228,9 @@ public class TestResourceController {
 					gson.toJson(createContainer), null);
 			System.out.println("get docker creation response");
 			if (response.getCode() == CREATE_CONTAINER_SUCCESS_CODE) {
-				CreateContainerResponse createContainerResponse = gson
+				Container createContainerResponse = gson
 						.fromJson(response.getContent(),
-								CreateContainerResponse.class);
+								Container.class);
 				result = createContainerResponse.getId();
 			}
 		} catch (ClientProtocolException e) {
@@ -233,7 +245,7 @@ public class TestResourceController {
 	 * 
 	 * @return container info
 	 */
-	public Container inspectContainer(String id) {
+	private Container inspectContainer(String id) {
 		InspectContainer inspectContainer = new InspectContainer();
 		try {
 			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME
@@ -262,22 +274,23 @@ public class TestResourceController {
 	 *            the container to be removed
 	 * @return true if succeed
 	 */
-	public boolean remove(Container container) {
+	public boolean remove(AgentModel agent) {
 		guardLogDirectoryExist();
-		makeContainerLogDir(container.getId());
+		makeContainerLogDir(agent.getId());
 		try {
 
 			Runtime.getRuntime().exec(
-					"docker cp " + container.getId() + ":/logs/log.log "
+					"docker cp " + agent.getId() + ":/logs/log.log "
 							+ "/usr/share/bench4q-docker/log/"
-							+ container.getId());
+							+ agent.getId());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if (killContainerPost(container) == KILL_CONTAINER_SUCCESS_CODE
-				| removeContainerPost(container) == REMOVE_CONTAINER_SUCCESS_CODE) {
+		if (killContainerPost(agent) == KILL_CONTAINER_SUCCESS_CODE
+				| removeContainerPost(agent) == REMOVE_CONTAINER_SUCCESS_CODE) {
+			System.out.println("starting remove " + agent.getId());
 			if (ResourceNode.getInstance() != null)
-				ResourceNode.getInstance().releaseResource(container);
+				ResourceNode.getInstance().releaseResource(agent);
 			return true;
 		} else {
 			return false;
@@ -301,11 +314,11 @@ public class TestResourceController {
 		}
 	}
 
-	private int killContainerPost(Container container) {
+	private int killContainerPost(AgentModel agent) {
 		HttpResponse response = null;
 		try {
 			response = httpRequester.sendPostJson(DOCKER_HOST_NAME + ":"
-					+ DOCKER_HOST_PORT + "/containers/" + container.getId()
+					+ DOCKER_HOST_PORT + "/containers/" + agent.getId()
 					+ "/kill", null, null);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -316,11 +329,11 @@ public class TestResourceController {
 			return 0;
 	}
 
-	private int removeContainerPost(Container container) {
+	private int removeContainerPost(AgentModel agent) {
 		HttpResponse response = null;
 		try {
 			response = httpRequester.sendDelete(DOCKER_HOST_NAME + ":"
-					+ DOCKER_HOST_PORT + "/containers/" + container.getId(),
+					+ DOCKER_HOST_PORT + "/containers/" + agent.getId(),
 					null, null);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -331,13 +344,13 @@ public class TestResourceController {
 			return 0;
 	}
 
-	public List<Container> getContainerList() {
-		List<Container> result = new ArrayList<Container>();
+	public List<AgentModel> getContainerList() {
+		List<AgentModel> result = new ArrayList<AgentModel>();
 		try {
 			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME
 					+ ":" + DOCKER_HOST_PORT + "/containers/json", null, null);
 			result = gson.fromJson(response.getContent(),
-					new TypeToken<List<Container>>() {
+					new TypeToken<List<AgentModel>>() {
 					}.getType());
 		} catch (ParseException e) {
 			e.printStackTrace();

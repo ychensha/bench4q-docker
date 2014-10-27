@@ -11,104 +11,46 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bench4q.share.master.test.resource.ResourceInfo;
+
 /**
  * @author gengpeng info of each container
  */
 public class ProcessorInfo {
-	private int size;
 	private double processorTimePercent;
 	private boolean started = false;
 	private List<Integer> pidList;
-	private static final Pattern PROCFS_CPUFILE_FORMAT = Pattern
-			.compile("processor");
-	private int processorCount;
-	private static int vcpuRatio;
 	private static long sleepTime = 1000;
-	
-	public ProcessorInfo(){
-		size = 0;
+	private ResourceInfo resourceInfo;
+
+	public ProcessorInfo(ResourceInfo resourceInfo) {
 		initPidList();
-		processorCount = getProcessorCount();
-		vcpuRatio = getVCpuRatio();
-		startCompute();
+		this.resourceInfo = resourceInfo;
 	}
 	
-	private int getVCpuRatio(){
-		Properties prop = new Properties();
-		int result = 0;
-		try {
-			prop.load(ProcessorInfo.class.getClassLoader().getResourceAsStream("docker-monitor.properties"));
-			result = Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return result;
+	public int getSize(){
+		return resourceInfo.getCpu();
 	}
-	private int getProcessorCount(){
-		int result = 0;
-		FileReader fr;
-		try {
-			fr = new FileReader("/proc/cpuinfo");
-			BufferedReader br = new BufferedReader(fr);
-			String line;
-			Matcher mat;
-			while ((line = br.readLine()) != null) {
-				mat = PROCFS_CPUFILE_FORMAT.matcher(line);
-				if (mat.find())
-					result++;
-			}
-			br.close();
-		} catch (FileNotFoundException e1) {
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return result;
-	}
-	
-	private void initPidList(){
+
+	private void initPidList() {
 		pidList = new ArrayList<Integer>();
 		File procRootDir = new File("/proc/");
 		FileFilter pidFilter = new FileFilter("^[0-9]*$");
 		File[] pidFiles = procRootDir.listFiles(pidFilter);
-		for(File file : pidFiles){
+		for (File file : pidFiles) {
 			pidList.add(Integer.valueOf(file.getName()));
 		}
 	}
-	
-	public void setSize(int size) {
-		this.size = size;
+
+	public void startCompute() {
+		if (!started) {
+			new Handler().start();
+			started = true;
+		}
 	}
 
-	public int getSize(){
-		if(size != 0 )
-			return size;
-		FileReader fr = null;
-		try {
-			fr = new FileReader("/proc//cpuinfo");
-			BufferedReader buff = new BufferedReader(fr);
-			String line;
-			while ((line = buff.readLine()) != null) {
-				String[] array = line.split("\\s+");
-				if (array[0].equals("processor"))
-					size++;
-			}
-			buff.close();
-		} catch (FileNotFoundException e) {
-		} catch (IOException e){
-			e.printStackTrace();
-		}
-		return size;
-	}
-	
-	public void startCompute(){
-		if(!started){
-			new Handler().start();
-			started=true;
-		}
-	}
-	
-	class Handler extends Thread{
-		private void compute() throws NumberFormatException{
+	class Handler extends Thread {
+		private void compute() throws NumberFormatException {
 			double[] uTime = new double[] { 0, 0 };
 			double[] sTime = new double[] { 0, 0 };
 			double[] cuTime = new double[] { 0, 0 };
@@ -120,8 +62,8 @@ public class ProcessorInfo {
 				cuTime[0] = cuTime[1];
 				csTime[0] = csTime[1];
 				uTime[1] = sTime[1] = cuTime[1] = csTime[1] = 0;
-				for(int pid : pidList){
-					url = "/proc/"+pid+"/stat";
+				for (int pid : pidList) {
+					url = "/proc/" + pid + "/stat";
 					FileReader fr = null;
 					try {
 						fr = new FileReader(url);
@@ -141,10 +83,11 @@ public class ProcessorInfo {
 						e.printStackTrace();
 					}
 				}
-				processorTimePercent = ((uTime[1] + sTime[1] + cuTime[1]
-						+ csTime[1] - uTime[0] - sTime[0] - cuTime[0] - csTime[0]) / sleepTime) / getSize();
-				processorTimePercent = Math.min(1.0, 
-						processorTimePercent * processorCount * vcpuRatio);
+				processorTimePercent = (uTime[1] + sTime[1] + cuTime[1]
+						+ csTime[1] - uTime[0] - sTime[0] - cuTime[0] - csTime[0])
+						* resourceInfo.getvCpuRatio()
+						/ (sleepTime * resourceInfo.getCpu());
+				processorTimePercent = Math.min(1.0, processorTimePercent);
 				try {
 					Thread.currentThread();
 					Thread.sleep(sleepTime);
@@ -153,8 +96,8 @@ public class ProcessorInfo {
 				}
 			}
 		}
-		
-		public void run(){
+
+		public void run() {
 			try {
 				compute();
 			} catch (NumberFormatException e) {
@@ -162,8 +105,8 @@ public class ProcessorInfo {
 			}
 		}
 	}
-	
-	public double getProcessorTimePercent(){
+
+	public double getProcessorTimePercent() {
 		return processorTimePercent;
 	}
 
