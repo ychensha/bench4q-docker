@@ -14,6 +14,7 @@ import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.*;
 import org.bench4q.share.models.mainframe.MainFrameDockerResponseModel;
+import org.bench4q.share.models.monitor.MonitorMain;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -87,7 +88,6 @@ public class ContainerController {
 
 	public static void main(String[] args) {
 		ContainerController testController = new ContainerController();
-
 		ResourceInfo resourceInfo = new ResourceInfo();
 		resourceInfo.setCpu(4);
 		resourceInfo.setMemoryKB(768 * 1024);
@@ -122,10 +122,12 @@ public class ContainerController {
 
 	public void postResourInfo(AgentModel agent, ResourceInfo resourceInfo) {
 		try {
-			System.out.println(buildAgentMonitorUrl(agent) + "/monitor/setResourceInfo");
-			HttpResponse response = httpRequester.sendPostXml(buildAgentMonitorUrl(agent)
-					+ "/monitor/setResourceInfo",
-					MarshalHelper.marshal(ResourceInfo.class, resourceInfo), null);
+			System.out.println(buildAgentMonitorUrl(agent)
+					+ "/monitor/setResourceInfo");
+			HttpResponse response = httpRequester.sendPostXml(
+					buildAgentMonitorUrl(agent) + "/monitor/setResourceInfo",
+					MarshalHelper.marshal(ResourceInfo.class, resourceInfo),
+					null);
 			System.out.println(response.getCode());
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -163,7 +165,8 @@ public class ContainerController {
 	public MainFrameDockerResponseModel createContainer(
 			@RequestBody ResourceInfo resource) {
 		System.out.println(MarshalHelper.tryMarshal(resource));
-		AgentModel agentModel = controller.createContainerAndSetCpuQuota(resource);
+		AgentModel agentModel = controller
+				.createContainerAndSetCpuQuota(resource);
 		if (agentModel == null) {
 			return setResponseModel(false, "docker create container fail", null);
 		}

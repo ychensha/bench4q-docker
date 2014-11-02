@@ -26,9 +26,10 @@ public class ProcessorInfo {
 	public ProcessorInfo(ResourceInfo resourceInfo) {
 		initPidList();
 		this.resourceInfo = resourceInfo;
+		startCompute();
 	}
-	
-	public int getSize(){
+
+	public int getSize() {
 		return resourceInfo.getCpu();
 	}
 
@@ -83,8 +84,10 @@ public class ProcessorInfo {
 						e.printStackTrace();
 					}
 				}
+				// pay attention to the unit of uTime[], it's jiffies = 10ms
 				processorTimePercent = (uTime[1] + sTime[1] + cuTime[1]
 						+ csTime[1] - uTime[0] - sTime[0] - cuTime[0] - csTime[0])
+						* 10
 						* resourceInfo.getvCpuRatio()
 						/ (sleepTime * resourceInfo.getCpu());
 				processorTimePercent = Math.min(1.0, processorTimePercent);

@@ -6,6 +6,7 @@ import org.bench4q.docker.monitor.api.NetworkInfo;
 import org.bench4q.docker.monitor.api.ProcessorInfo;
 import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.models.monitor.HealthModel;
 import org.bench4q.share.models.monitor.JvmModel;
 import org.bench4q.share.models.monitor.MemoryModel;
 import org.bench4q.share.models.monitor.MonitorMain;
@@ -42,7 +43,7 @@ public class MonitorController {
 		result.setPhysicalDiskModel(getPhysicalDiskModel());
 		result.setProcessorModel(getProcessorModel());
 		result.setJvmModel(getJvmModel());
-		result.setHealtyThreshold(resourceInfo.getHealthThreshold());
+		result.setHealthModel(new HealthModel(resourceInfo.getHealthThreshold()));
 		result.checkHealth();
 		return result;
 	}
