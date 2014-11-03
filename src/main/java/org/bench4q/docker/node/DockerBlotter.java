@@ -12,7 +12,6 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
 
@@ -50,6 +49,7 @@ public class DockerBlotter {
 	private long totalMemoryKB;
 	private long freeMemoryKB;
 
+	private static int CPU_CFS_PERIOD_US = 100000; 
 	private static final String PROCFS_MEMINFO = "/proc/meminfo";
 	private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
 	private static final String MEMTOTAL_STRING = "MemTotal";
@@ -242,7 +242,15 @@ public class DockerBlotter {
 		return freeMemoryKB;
 	}
 
+	private long getTotalMemoryKB() {
+		return totalMemoryKB;
+	}
+
 	private int getFreeVCpu() {
 		return freeVCpu;
+	}
+
+	private int getTotalVCpu() {
+		return totalVCpu;
 	}
 }
