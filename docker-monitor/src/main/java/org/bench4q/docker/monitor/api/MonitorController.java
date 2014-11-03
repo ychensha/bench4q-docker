@@ -5,7 +5,7 @@ import org.bench4q.docker.monitor.api.MemoryInfo;
 import org.bench4q.docker.monitor.api.NetworkInfo;
 import org.bench4q.docker.monitor.api.ProcessorInfo;
 import org.bench4q.share.helper.MarshalHelper;
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.models.monitor.HealthModel;
 import org.bench4q.share.models.monitor.JvmModel;
 import org.bench4q.share.models.monitor.MemoryModel;
@@ -18,7 +18,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -32,7 +31,7 @@ public class MonitorController {
 	DiskInfo diskInfo = new DiskInfo();
 	JvmInfo jvmInfo = new JvmInfo();
 	
-	private ResourceInfo resourceInfo;
+	private ResourceInfoModel resourceInfo;
 	
 	@RequestMapping("/all")
 	@ResponseBody
@@ -90,7 +89,7 @@ public class MonitorController {
 	
 	@RequestMapping(value = "/setResourceInfo", method = RequestMethod.POST)
 	@ResponseStatus(value = HttpStatus.OK)
-	synchronized public void setResourceInfo(@RequestBody ResourceInfo resourceInfo){
+	synchronized public void setResourceInfo(@RequestBody ResourceInfoModel resourceInfo){
 		System.out.println(MarshalHelper.tryMarshal(resourceInfo));
 		this.resourceInfo = resourceInfo;
 		this.processorInfo = new ProcessorInfo(resourceInfo);

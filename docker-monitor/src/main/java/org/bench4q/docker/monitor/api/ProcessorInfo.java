@@ -7,11 +7,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
 
 /**
  * @author gengpeng info of each container
@@ -21,9 +18,9 @@ public class ProcessorInfo {
 	private boolean started = false;
 	private List<Integer> pidList;
 	private static long sleepTime = 1000;
-	private ResourceInfo resourceInfo;
+	private ResourceInfoModel resourceInfo;
 
-	public ProcessorInfo(ResourceInfo resourceInfo) {
+	public ProcessorInfo(ResourceInfoModel resourceInfo) {
 		initPidList();
 		this.resourceInfo = resourceInfo;
 		startCompute();

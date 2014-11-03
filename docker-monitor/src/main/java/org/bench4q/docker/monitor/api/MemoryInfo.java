@@ -8,7 +8,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
+
 
 /**
  * @author gengpeng
@@ -17,9 +18,9 @@ import org.bench4q.share.master.test.resource.ResourceInfo;
 public class MemoryInfo {
 	private long usedMemory;
 	private List<Integer> pidList;
-	private ResourceInfo resourceInfo;
+	private ResourceInfoModel resourceInfo;
 
-	public MemoryInfo(ResourceInfo resourceInfo){
+	public MemoryInfo(ResourceInfoModel resourceInfo){
 		this.resourceInfo = resourceInfo;
 		initPidList();
 	}
