@@ -55,15 +55,15 @@ public class ContainerController {
 		}
 	}
 
-	public List<AgentModel> createContainers(List<ResourceInfo> resourceInfoList) {
+	public List<AgentModel> createContainers(List<ResourceInfoModel> resourceInfoList) {
 		List<AgentModel> result = new ArrayList<AgentModel>();
 		if (resourceInfoList != null) {
-			for (ResourceInfo resourceInfo : resourceInfoList) {
+			for (ResourceInfoModel resourceInfo : resourceInfoList) {
 				HttpResponse response;
 				try {
 					response = httpRequester.sendPostXml(buildBaseUrl()
 							+ "/createTestContainer", MarshalHelper.marshal(
-							ResourceInfo.class, resourceInfo), null);
+							ResourceInfoModel.class, resourceInfo), null);
 					MainFrameDockerResponseModel dockerResponse = (MainFrameDockerResponseModel) MarshalHelper
 							.unmarshal(MainFrameDockerResponseModel.class,
 									response.getContent());
@@ -88,7 +88,7 @@ public class ContainerController {
 
 	public static void main(String[] args) {
 		ContainerController testController = new ContainerController();
-		ResourceInfo resourceInfo = new ResourceInfo();
+		ResourceInfoModel resourceInfo = new ResourceInfoModel();
 		resourceInfo.setCpu(4);
 		resourceInfo.setMemoryKB(768 * 1024);
 		resourceInfo.setDownloadBandwidthKByte(0);
@@ -107,7 +107,7 @@ public class ContainerController {
 		// cmds.add("java -jar /opt/empty-jetty/empty-jetty-server.jar");
 		resourceInfo.setCmds(cmds);
 
-		List<ResourceInfo> resourceInfoList = new ArrayList<ResourceInfo>();
+		List<ResourceInfoModel> resourceInfoList = new ArrayList<ResourceInfoModel>();
 		for (int i = 0; i < 1; i++) {
 			resourceInfoList.add(resourceInfo);
 		}
@@ -120,13 +120,13 @@ public class ContainerController {
 		return agent.getHostName() + ":" + agent.getMonitorPort();
 	}
 
-	public void postResourInfo(AgentModel agent, ResourceInfo resourceInfo) {
+	public void postResourInfo(AgentModel agent, ResourceInfoModel resourceInfo) {
 		try {
 			System.out.println(buildAgentMonitorUrl(agent)
 					+ "/monitor/setResourceInfo");
 			HttpResponse response = httpRequester.sendPostXml(
 					buildAgentMonitorUrl(agent) + "/monitor/setResourceInfo",
-					MarshalHelper.marshal(ResourceInfo.class, resourceInfo),
+					MarshalHelper.marshal(ResourceInfoModel.class, resourceInfo),
 					null);
 			System.out.println(response.getCode());
 		} catch (Exception e) {
@@ -137,7 +137,7 @@ public class ContainerController {
 	@RequestMapping(value = "/createTestContainer", method = RequestMethod.POST)
 	@ResponseBody
 	public MainFrameDockerResponseModel createTestContainer(
-			@RequestBody ResourceInfo resource) {
+			@RequestBody ResourceInfoModel resource) {
 		AgentModel agentModel = controller.createTestContainer(resource);
 		if (agentModel == null) {
 			return setResponseModel(false, "docker create container fail", null);
@@ -163,7 +163,7 @@ public class ContainerController {
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
 	@ResponseBody
 	public MainFrameDockerResponseModel createContainer(
-			@RequestBody ResourceInfo resource) {
+			@RequestBody ResourceInfoModel resource) {
 		System.out.println(MarshalHelper.tryMarshal(resource));
 		AgentModel agentModel = controller
 				.createContainerAndSetCpuQuota(resource);
