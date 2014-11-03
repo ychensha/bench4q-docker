@@ -13,7 +13,7 @@ import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
 
 class Cpu {
@@ -50,7 +50,6 @@ public class DockerBlotter {
 	private long totalMemoryKB;
 	private long freeMemoryKB;
 
-	private static int CPU_CFS_PERIOD_US = 100000; 
 	private static final String PROCFS_MEMINFO = "/proc/meminfo";
 	private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
 	private static final String MEMTOTAL_STRING = "MemTotal";
@@ -164,7 +163,7 @@ public class DockerBlotter {
 		this.totalDownloadBandwidthKB = downloadBandwidth;
 	}
 
-	private boolean isEnough(ResourceInfo resourceInfo) {
+	private boolean isEnough(ResourceInfoModel resourceInfo) {
 		boolean result = false;
 		if (resourceInfo.getCpu() <= getFreeVCpu()
 				&& resourceInfo.getMemoryKB() <= getFreeMemoryKB()
@@ -179,7 +178,7 @@ public class DockerBlotter {
 	 * @param resourceInfo resource requested
 	 * @return the format that docker-api requires
 	 */
-	public ResourceInfo requestResource(ResourceInfo resourceInfo) {
+	public ResourceInfoModel requestResource(ResourceInfoModel resourceInfo) {
 		if(!isEnough(resourceInfo))
 			return null;
 		
@@ -201,7 +200,7 @@ public class DockerBlotter {
 		return resourceInfo;
 	}
 	
-	public void releaseResource(ResourceInfo resourceInfo){
+	public void releaseResource(ResourceInfoModel resourceInfo){
 		// update avalCpu
 		for (int cpuId : resourceInfo.getCpuSet()) {
 			Cpu cpu = processorList.get(cpuId);
@@ -243,15 +242,7 @@ public class DockerBlotter {
 		return freeMemoryKB;
 	}
 
-	private long getTotalMemoryKB() {
-		return totalMemoryKB;
-	}
-
 	private int getFreeVCpu() {
 		return freeVCpu;
-	}
-
-	private int getTotalVCpu() {
-		return totalVCpu;
 	}
 }

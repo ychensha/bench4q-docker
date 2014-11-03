@@ -19,9 +19,8 @@ import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
 
 import com.google.gson.FieldNamingPolicy;
@@ -43,7 +42,7 @@ public class DockerApi {
 
 	private static int CPU_CFS_PERIOD_US; 
 	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
-	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
+//	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
 	private static final String LXC_CPU_QUOTA = "lxc.cgroup.cpu.cfs_quota_us";
 
@@ -78,7 +77,7 @@ public class DockerApi {
 		return ResourceNode.getInstance().getCurrentStatus();
 	}
 	
-	public AgentModel createTestContainer(ResourceInfo resource) {
+	public AgentModel createTestContainer(ResourceInfoModel resource) {
 		AgentModel result = new AgentModel();
 		resource = ResourceNode.getInstance().requestResource(resource);
 		System.out.println("get resourceNode response.");
@@ -102,7 +101,7 @@ public class DockerApi {
 		return result;
 	}
 
-	public AgentModel createContainerAndSetCpuQuota(ResourceInfo resource) {
+	public AgentModel createContainerAndSetCpuQuota(ResourceInfoModel resource) {
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
@@ -136,7 +135,7 @@ public class DockerApi {
 	}
 
 	private boolean startContainerByIdAndSetLxcConfigWithQuota(
-			String containerId, ResourceInfo resource) {
+			String containerId, ResourceInfoModel resource) {
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
 		ports.add("");
@@ -156,7 +155,7 @@ public class DockerApi {
 	}
 
 	private Map<String, String> getContainerLxcConfigWithQuota(
-			ResourceInfo resource) {
+			ResourceInfoModel resource) {
 		Map<String, String> result = new HashMap<String, String>();
 		System.out.println(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio());
 		result.put(LXC_CPU_QUOTA, String.valueOf(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio()));
@@ -182,7 +181,7 @@ public class DockerApi {
 		return result;
 	}
 
-	private void setContainerDownloadBandWidth(ResourceInfo resource) {
+	private void setContainerDownloadBandWidth(ResourceInfoModel resource) {
 		if (resource.getDownloadBandwidthKByte() == 0)
 			return;
 		String command = getTcCmd("veth" + (VETHID - 1),
@@ -205,7 +204,7 @@ public class DockerApi {
 	}
 
 	private CreateContainer getCreateContainerWithSetting(
-			ResourceInfo resource) {
+			ResourceInfoModel resource) {
 		CreateContainer result = new CreateContainer();
 		if (resource.getUploadBandwidthKByte() != 0) {
 			String startupCmd = getTcCmd("eth0",

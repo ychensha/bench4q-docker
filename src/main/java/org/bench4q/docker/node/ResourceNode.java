@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.ResourceInfo;
+import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
 
 public class ResourceNode {
@@ -33,11 +33,11 @@ public class ResourceNode {
 		}
 	}
 
-	public ResourceInfo requestResource(ResourceInfo resource) {
+	public ResourceInfoModel requestResource(ResourceInfoModel resource) {
 		if(resource == null)
 			return resource;
 		
-		ResourceInfo result = null;
+		ResourceInfoModel result = null;
 		lock.writeLock().lock();
 		try {
 			result = dockerBlotter.requestResource(resource);
