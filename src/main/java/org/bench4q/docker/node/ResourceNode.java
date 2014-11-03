@@ -27,6 +27,7 @@ public class ResourceNode {
 		DockerApi testResourceController = new DockerApi();
 		List<AgentModel> runningContainerList = testResourceController
 				.getContainerList();
+		System.out.println(runningContainerList.size());
 		for(AgentModel container : runningContainerList){
 			testResourceController.remove(container);
 		}
