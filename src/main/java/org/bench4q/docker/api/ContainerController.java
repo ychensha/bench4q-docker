@@ -52,7 +52,8 @@ public class ContainerController {
 		}
 	}
 
-	public List<AgentModel> createContainers(List<ResourceInfoModel> resourceInfoList) {
+	public List<AgentModel> createContainers(
+			List<ResourceInfoModel> resourceInfoList) {
 		List<AgentModel> result = new ArrayList<AgentModel>();
 		if (resourceInfoList != null) {
 			for (ResourceInfoModel resourceInfo : resourceInfoList) {
@@ -123,7 +124,8 @@ public class ContainerController {
 					+ "/monitor/setResourceInfo");
 			HttpResponse response = httpRequester.sendPostXml(
 					buildAgentMonitorUrl(agent) + "/monitor/setResourceInfo",
-					MarshalHelper.marshal(ResourceInfoModel.class, resourceInfo),
+					MarshalHelper
+							.marshal(ResourceInfoModel.class, resourceInfo),
 					null);
 			System.out.println(response.getCode());
 		} catch (Exception e) {
@@ -162,6 +164,9 @@ public class ContainerController {
 	public MainFrameDockerResponseModel createContainer(
 			@RequestBody ResourceInfoModel resource) {
 		System.out.println(MarshalHelper.tryMarshal(resource));
+		if (!isParamLegal(resource)) {
+			return setResponseModel(false, "param illegal", null);
+		}
 		AgentModel agentModel = controller
 				.createContainerAndSetCpuQuota(resource);
 		if (agentModel == null) {
@@ -182,6 +187,16 @@ public class ContainerController {
 	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
 		MainFrameResponseModel result = new MainFrameResponseModel();
 		result.setSuccess(controller.remove(agent));
+		return result;
+	}
+
+	private boolean isParamLegal(ResourceInfoModel model) {
+		boolean result = true;
+		if (model.getCpu() <= 0 || model.getCmds() == null
+				|| model.getImageName() == null || model.getMemoryKB() <= 0
+				|| model.getDownloadBandwidthKByte() <= 0
+				|| model.getUploadBandwidthKByte() <= 0)
+			result = false;
 		return result;
 	}
 

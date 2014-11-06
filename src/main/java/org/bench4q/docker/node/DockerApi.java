@@ -280,7 +280,7 @@ public class DockerApi {
 
 			Runtime.getRuntime().exec(
 					"docker cp " + agent.getId() + ":/logs/log.log "
-							+ "/usr/share/bench4q-docker/log/"
+							+ "./log/"
 							+ agent.getId());
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -297,7 +297,7 @@ public class DockerApi {
 	}
 
 	private void makeContainerLogDir(String id) {
-		File dir = new File("/usr/share/bench4q-docker/log/" + id);
+		File dir = new File("./log/" + id);
 		if (dir.exists()) {
 			System.out.println("container log dir existing");
 			return;
@@ -306,7 +306,7 @@ public class DockerApi {
 	}
 
 	private void guardLogDirectoryExist() {
-		File dir = new File("/usr/share/bench4q-docker/log");
+		File dir = new File("./log");
 		if (!dir.exists()) {
 			if (!dir.mkdirs())
 				System.out.println("make service log dir fail");
@@ -360,98 +360,4 @@ public class DockerApi {
 		}
 		return result;
 	}
-	/**
-	 * @return the container created
-	 */
-	// public Container createContainer(RequestResource resource){
-	// Container container = new Container();
-	// String poolResponse =
-	// ResourceNode.getInstance().requestResource(resource);
-	//
-	// if(poolResponse != null){
-	// container.setId(createContainerAndSetUploadBandwidth(resource,
-	// poolResponse));
-	// }
-	// else
-	// return null;
-	//
-	// if(container.getId() != null){
-	// if(startContainerByIdAndSetLxcConfig(container.getId(), resource,
-	// poolResponse)
-	// == 0)
-	// return null;
-	// }
-	// setContainerDownloadBandWidth(resource);
-	// return inspectContainer(container.getId());
-	// }
-	//
-	// private String createContainerAndSetUploadBandwidth(RequestResource
-	// resource){
-	// String id = null;
-	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
-	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT + "/containers/create");
-	// CreateContainer createContainer = new CreateContainer();
-	// List<String> cmds = new ArrayList<String>();
-	// String startupCmd = "";
-	// cmds.add("/bin/sh");
-	// cmds.add("-c");
-	// cmds.add("/opt/bench4q-agent-publish/startup.sh&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
-	// if(resource.getUploadBandwidthKBit() != 0)
-	// startupCmd += ""+getTcCmd("eth0",resource.getUploadBandwidthKBit());
-	// cmds.add(startupCmd);
-	// createContainer.setImage(IMAGE_NAME);
-	// createContainer.setCmd(cmds);
-	// HttpEntity httpEntity = new StringEntity(gson.toJson(createContainer),
-	// ContentType.APPLICATION_JSON);
-	// httpPost.setEntity(httpEntity);
-	// try {
-	// CloseableHttpResponse response = httpClient.execute(httpPost);
-	// if(response.getStatusLine().getStatusCode() ==
-	// CREATE_CONTAINER_SUCCESS_CODE){
-	// id = EntityUtils.toString(response.getEntity(), "utf-8");
-	// CreateContainerResponse createContainerResponse = gson.fromJson(id,
-	// CreateContainerResponse.class);
-	// id = createContainerResponse.getId();
-	// }
-	// } catch (ClientProtocolException e) {
-	// e.printStackTrace();
-	// } catch (IOException e) {
-	// e.printStackTrace();
-	// }
-	// return id;
-	// }
-
-	// private Map<String, String> getContainerLxcConfig(RequestResource
-	// resource, String cpuset){
-	// Map<String, String> result = new HashMap<String, String>();
-	// result.put(LXC_CPUSET_CPUS, cpuset);
-	// result.put(LXC_MEMORY_LIMIT_IN_BYTES,
-	// String.valueOf(resource.getMemoryLimitKB() * 1024));
-	// result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
-	// if(VETHID == 0)
-	// VETHID = 1;
-	// return result;
-	// }
-
-	// private int startContainerByIdAndSetLxcConfig(String id, RequestResource
-	// resource, String cpuset){
-	// StartContainer startContainer = new StartContainer();
-	// List<String> ports = new ArrayList<String>();
-	// ports.add("0");
-	// startContainer.setLxcConf(getContainerLxcConfig(resource, cpuset));
-	// startContainer.setPortbindings(ports);
-	// startContainer.setPrivileged(true);
-	//
-	// HttpPost httpPost = new HttpPost(PROTOL_PREFIX +
-	// DOCKER_HOST_NAME+":"+DOCKER_HOST_PORT
-	// +"/containers/" + id + "/start");
-	// HttpEntity httpEntity = new StringEntity(gson.toJson(startContainer),
-	// ContentType.APPLICATION_JSON);
-	// httpPost.setEntity(httpEntity);
-	//
-	// if(getResponseStatusCode(httpPost) == START_CONTAINER_SUCCESS_CODE)
-	// return 1;
-	// else
-	// return 0;
-	// }
 }
