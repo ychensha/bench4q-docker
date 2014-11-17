@@ -11,7 +11,9 @@ public class Main {
 		Properties prop = new Properties();
 		try {
 			prop.load(Main.class.getClassLoader().getResourceAsStream("docker-monitor.properties"));
-			port = Integer.valueOf(prop.getProperty("MONITOR_HOST_PORT", "5556"));
+			if(prop != null){
+				port = Integer.valueOf(prop.getProperty("MONITOR_HOST_PORT", "5556"));
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -1,16 +1,20 @@
 package org.bench4q.docker.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 public class Main {
-	private static int port = 6565;
+	private static int port = 5656;
 	
 	public static void main(String[] args){
 		Properties prop = new Properties();
 		try {
-			prop.load(Main.class.getClassLoader().getResourceAsStream("docker-service.properties"));
-			port = Integer.valueOf(prop.getProperty("MAINFRAME_HOST_PORT", "5656"));
+			InputStream is = Main.class.getClassLoader().getResourceAsStream("docker-service.properties");
+			if(is != null){
+				prop.load(is);
+				port = Integer.valueOf(prop.getProperty("MAINFRAME_HOST_PORT", "5656"));
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
