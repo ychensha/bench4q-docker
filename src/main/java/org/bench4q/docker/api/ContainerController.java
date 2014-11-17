@@ -26,7 +26,7 @@ public class ContainerController {
 	private HttpRequester httpRequester = new HttpRequester();
 
 	private String buildBaseUrl() {
-		return "133.133.134.153:5656/docker";
+		return "133.133.134.175:5656/docker";
 	}
 
 	public void removeContainers(List<AgentModel> agents) {
