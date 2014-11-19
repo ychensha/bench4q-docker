@@ -1,7 +1,9 @@
 package org.bench4q.docker.node;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
@@ -187,20 +189,24 @@ public class DockerApi {
 		String command = getTcCmd("veth" + (VETHID - 1),
 				resource.getDownloadBandwidthKByte());
 		if (DOCKER_HOST_PASSWORD != null) {
-			String psw = "echo " + DOCKER_HOST_PASSWORD + " | ";
+			String psw = "echo " + DOCKER_HOST_PASSWORD + "|";
 			command = psw + command;
 		}
 		try {
-			Runtime.getRuntime().exec(command);
+			List<String> cmds = new ArrayList<String>();
+			cmds.add("/bin/sh");
+			cmds.add("-c");
+			cmds.add(command);
+			Runtime.getRuntime().exec(cmds.toArray(new String[cmds.size()]));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
 	private String getTcCmd(String device, long bandwidthLimit) {
-		return "sudo tc qdisc add dev " + device + " root tbf rate "
-				+ bandwidthLimit * 8
-				+ "kbit latency 50ms burst 10000 mpu 64 mtu 1500";
+		return "sudo -S tc qdisc add dev " + device + " root tbf rate "
+				+ bandwidthLimit
+				+ "kbps latency 50ms burst 50000 mpu 64 mtu 1500";
 	}
 
 	private CreateContainer getCreateContainerWithSetting(
