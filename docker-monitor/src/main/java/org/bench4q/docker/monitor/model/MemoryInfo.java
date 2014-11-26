@@ -1,4 +1,4 @@
-package org.bench4q.docker.monitor.api;
+package org.bench4q.docker.monitor.model;
 
 import java.io.BufferedReader;
 import java.io.File;

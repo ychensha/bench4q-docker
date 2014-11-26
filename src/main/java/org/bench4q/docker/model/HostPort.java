@@ -4,6 +4,9 @@ public class HostPort {
 	private String hostIp;
 	private String hostPort;
 
+	public HostPort(){
+		
+	}
 	public String getHostPort() {
 		return hostPort;
 	}
@@ -14,5 +17,13 @@ public class HostPort {
 	
 	public HostPort(String port){
 		hostPort = port;
+	}
+
+	public String getHostIp() {
+		return hostIp;
+	}
+
+	public void setHostIp(String hostIp) {
+		this.hostIp = hostIp;
 	}
 }

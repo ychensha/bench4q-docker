@@ -12,6 +12,8 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
 
@@ -37,6 +39,8 @@ class Cpu {
 }
 
 public class DockerBlotter {
+	private Logger logger = Logger.getLogger(DockerBlotter.class);
+	
 	private int vCpuRatio;
 	private double containerHealthThreshold;
 	private long totalUploadBandwidthKB = 10 * 1000;
@@ -49,7 +53,6 @@ public class DockerBlotter {
 	private long totalMemoryKB;
 	private long freeMemoryKB;
 
-	private static int CPU_CFS_PERIOD_US = 100000; 
 	private static final String PROCFS_MEMINFO = "/proc/meminfo";
 	private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
 	private static final String MEMTOTAL_STRING = "MemTotal";
@@ -64,12 +67,11 @@ public class DockerBlotter {
 	
 	private void readSystemInfo() {
 		BufferedReader bufferedReader = null;
-		Matcher mat = PROCFS_MEMFILE_FORMAT.matcher("one line ");
 		try {
 			bufferedReader = new BufferedReader(new FileReader(PROCFS_MEMINFO));
 			String line = null;
 			while ((line = bufferedReader.readLine()) != null) {
-				mat = PROCFS_MEMFILE_FORMAT.matcher(line);
+				Matcher mat = PROCFS_MEMFILE_FORMAT.matcher(line);
 				if (mat.find()) {
 					if (mat.group(1).equals(MEMTOTAL_STRING))
 						totalMemoryKB = Long.parseLong(mat.group(2));
@@ -81,7 +83,7 @@ public class DockerBlotter {
 
 			bufferedReader = new BufferedReader(new FileReader(PROCFS_CPUINFO));
 			while ((line = bufferedReader.readLine()) != null) {
-				mat = PROCFS_CPUFILE_FORMAT.matcher(line);
+				Matcher mat = PROCFS_CPUFILE_FORMAT.matcher(line);
 				if (mat.find())
 					physicalCpu++;
 			}
@@ -90,7 +92,7 @@ public class DockerBlotter {
 			// may be it's not Linux, suppose we get 2GB memory and 2 CPU
 			freeMemoryKB = totalMemoryKB = 2 * 1024 * 1024;
 			physicalCpu = 2;
-			e.printStackTrace();
+			logger.warn("can not find procfs");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -179,8 +181,10 @@ public class DockerBlotter {
 	 * @return the format that docker-api requires
 	 */
 	public ResourceInfoModel requestResource(ResourceInfoModel resourceInfo) {
-		if(!isEnough(resourceInfo))
+		if(!isEnough(resourceInfo)){
+			logger.warn("the system resource is not enough.");
 			return null;
+		}
 		
 		List<Integer> cpuSet = new ArrayList<Integer>();
 		for (int i = 0; i < resourceInfo.getCpu(); ++i) {
@@ -242,15 +246,7 @@ public class DockerBlotter {
 		return freeMemoryKB;
 	}
 
-	private long getTotalMemoryKB() {
-		return totalMemoryKB;
-	}
-
 	private int getFreeVCpu() {
 		return freeVCpu;
-	}
-
-	private int getTotalVCpu() {
-		return totalVCpu;
 	}
 }

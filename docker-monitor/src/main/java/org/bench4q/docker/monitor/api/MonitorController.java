@@ -1,9 +1,10 @@
 package org.bench4q.docker.monitor.api;
 
-import org.bench4q.docker.monitor.api.DiskInfo;
-import org.bench4q.docker.monitor.api.MemoryInfo;
-import org.bench4q.docker.monitor.api.NetworkInfo;
-import org.bench4q.docker.monitor.api.ProcessorInfo;
+import org.bench4q.docker.monitor.model.DiskInfo;
+import org.bench4q.docker.monitor.model.JvmInfo;
+import org.bench4q.docker.monitor.model.MemoryInfo;
+import org.bench4q.docker.monitor.model.NetworkInfo;
+import org.bench4q.docker.monitor.model.ProcessorInfo;
 import org.bench4q.share.helper.MarshalHelper;
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.models.monitor.HealthModel;
@@ -27,18 +28,28 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class MonitorController {
 	MemoryInfo memoryInfo;
 	ProcessorInfo processorInfo;
-	NetworkInfo networkInfo = new NetworkInfo();
+	NetworkInfo agentNetworkInfo = new NetworkInfo("agent");
+	NetworkInfo monitorNetworkInfo = new NetworkInfo("monitor");
 	DiskInfo diskInfo = new DiskInfo();
 	JvmInfo jvmInfo = new JvmInfo();
 	
 	private ResourceInfoModel resourceInfo;
+	
+	private NetworkInterfaceModel getMonitorNetworkInterfaceModel(){
+		NetworkInterfaceModel result = new NetworkInterfaceModel();
+		result.setKiloBytesTotalPerSecond(monitorNetworkInfo.getKiloBytesTotalPerSecond());
+		result.setKiloBytesSentPerSecond(monitorNetworkInfo.getKiloBytesSentPerSecond());
+		result.setKiloBytesReceivedPerSecond(monitorNetworkInfo.getKiloBytesReceivedPerSecond());
+		return result;
+	}
 	
 	@RequestMapping("/all")
 	@ResponseBody
 	public MonitorMain getMainModel(){
 		MonitorMain result = new MonitorMain();
 		result.setMemoryModel(getMemoryModel());
-		result.setNetworkInterfaceModel(getNetworkInterfaceModel());
+		result.setAgentNetworkInterfaceModel(getNetworkInterfaceModel());
+		result.setMonitorNetworkInterfaceModel(getMonitorNetworkInterfaceModel());
 		result.setPhysicalDiskModel(getPhysicalDiskModel());
 		result.setProcessorModel(getProcessorModel());
 		result.setJvmModel(getJvmModel());
@@ -68,9 +79,9 @@ public class MonitorController {
 	@ResponseBody
 	public NetworkInterfaceModel getNetworkInterfaceModel(){
 		NetworkInterfaceModel result = new NetworkInterfaceModel();
-		result.setKiloBytesTotalPerSecond(networkInfo.getKiloBytesTotalPerSecond());
-		result.setKiloBytesReceivedPerSecond(networkInfo.getKiloBytesReceivedPerSecond());
-		result.setKiloBytesSentPerSecond(networkInfo.getKiloBytesSentPerSecond());
+		result.setKiloBytesTotalPerSecond(agentNetworkInfo.getKiloBytesTotalPerSecond());
+		result.setKiloBytesReceivedPerSecond(agentNetworkInfo.getKiloBytesReceivedPerSecond());
+		result.setKiloBytesSentPerSecond(agentNetworkInfo.getKiloBytesSentPerSecond());
 		return result;
 	}
 	@RequestMapping("/processor")

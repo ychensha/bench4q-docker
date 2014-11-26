@@ -1,4 +1,4 @@
-package org.bench4q.docker.service;
+package org.bench4q.docker.main;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;

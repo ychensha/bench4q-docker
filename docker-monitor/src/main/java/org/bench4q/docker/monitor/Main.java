@@ -8,6 +8,7 @@ public class Main {
 	private static int port = 5556;
 	
 	public static void main(String[] args){
+		long startTime = System.currentTimeMillis();
 		Properties prop = new Properties();
 		try {
 			prop.load(Main.class.getClassLoader().getResourceAsStream("docker-monitor.properties"));
@@ -19,5 +20,7 @@ public class Main {
 		}
 		MonitorServer server = new MonitorServer(port);
 		server.start();
+		long endTime = System.currentTimeMillis();
+		System.out.println("monitor startup in " + ((double)endTime - startTime)/1000 + "s");
 	}
 }

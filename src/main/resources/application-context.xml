@@ -7,4 +7,8 @@
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 	<context:component-scan base-package="org.bench4q" />
 	<mvc:annotation-driven />
+	<bean id="dockerDaemonPort" class="org.bench4q.docker.model.DockerDaemonPort">
+		<property name="hostIp" value="133.133.134.153"/>
+		<property name="hostPort" value="2375"/>
+	</bean> 
 </beans>

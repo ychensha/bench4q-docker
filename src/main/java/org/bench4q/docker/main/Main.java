@@ -1,4 +1,4 @@
-package org.bench4q.docker.service;
+package org.bench4q.docker.main;
 
 import java.io.IOException;
 import java.io.InputStream;

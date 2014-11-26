@@ -2,14 +2,10 @@ package org.bench4q.docker.model;
 
 public class Container {
 	private String ip;
-	private String port;
 	private String id;
 	private String image;
+	private String port;
 	private String monitorPort;
-	
-	private HostConfig hostConfig;
-	private ContainerConfig config;
-	
 	
 	public String getMonitorPort() {
 		return monitorPort;
@@ -43,19 +39,11 @@ public class Container {
 		this.port = port;
 	}
 
-	public HostConfig getHostConfig() {
-		return hostConfig;
+	public String getImage() {
+		return image;
 	}
 
-	public void setHostConfig(HostConfig hostConfig) {
-		this.hostConfig = hostConfig;
-	}
-
-	public ContainerConfig getConfig() {
-		return config;
-	}
-
-	public void setConfig(ContainerConfig config) {
-		this.config = config;
+	public void setImage(String image) {
+		this.image = image;
 	}
 }

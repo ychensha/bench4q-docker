@@ -1,42 +1,42 @@
 package org.bench4q.docker.node;
 
-
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.annotation.PostConstruct;
+
 import org.bench4q.share.master.test.resource.AgentModel;
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ResourceNode {
 	private DockerBlotter dockerBlotter;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
-	private static volatile ResourceNode instance = new ResourceNode();
+	@Autowired
+	private DockerApi dockerApi;
 
-	private ResourceNode() {
+	@PostConstruct
+	public void init() {
 		cleanUp();
 		dockerBlotter = new DockerBlotter();
 		dockerBlotter.init();
 	}
 
-	public static ResourceNode getInstance() {
-		return instance;
-	}
-	
-	private void cleanUp(){
-		DockerApi testResourceController = new DockerApi();
-		List<AgentModel> runningContainerList = testResourceController
-				.getContainerList();
-		System.out.println(runningContainerList.size());
-		for(AgentModel container : runningContainerList){
-			testResourceController.remove(container);
+	private void cleanUp() {
+		List<AgentModel> runningContainerList = dockerApi.getAgentList();
+		for (AgentModel container : runningContainerList) {
+			dockerApi.remove(container);
 		}
 	}
 
 	public ResourceInfoModel requestResource(ResourceInfoModel resource) {
-		if(resource == null)
+		if (resource == null)
 			return resource;
-		
+
 		ResourceInfoModel result = null;
 		lock.writeLock().lock();
 		try {

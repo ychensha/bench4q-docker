@@ -15,7 +15,6 @@ public class CreateContainer {
 	private boolean attachStderr = false;
 	private ExposedPort exposedPorts;
 	private String image;
-	private String ports;
 	private List<String> cmd;
 	
 	public List<String> getCmd() {
@@ -26,10 +25,6 @@ public class CreateContainer {
 		this.cmd = cmd;
 	}
 
-	public String getPorts() {
-		return ports;
-	}
-
 	public String getCpuset() {
 		return cpuset;
 	}
@@ -38,12 +33,12 @@ public class CreateContainer {
 		this.cpuset = cpuset;
 	}
 
-	public void setPorts(String ports) {
-		this.ports = ports;
-	}
-
 	public void setImage(String image) {
 		this.image = image;
+	}
+	
+	public String getImage(){
+		return image;
 	}
 
 	public long getMemoryByte() {

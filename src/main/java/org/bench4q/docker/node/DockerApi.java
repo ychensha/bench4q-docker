@@ -1,9 +1,8 @@
 package org.bench4q.docker.node;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
@@ -13,59 +12,55 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.http.ParseException;
-import org.apache.http.client.ClientProtocolException;
+import org.apache.log4j.Logger;
+import org.bench4q.docker.communication.DockerDaemonMessenger;
+import org.bench4q.docker.communication.impl.DockerDaemonMessengerImpl;
 import org.bench4q.docker.model.Container;
 import org.bench4q.docker.model.CreateContainer;
 import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
-import org.bench4q.share.communication.HttpRequester;
-import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.master.test.resource.AgentModel;
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
+@Component
 public class DockerApi {
+	private Logger logger = Logger.getLogger(DockerApi.class);
+
 	private static int VETHID = 1;
 	public static String IMAGE_NAME;
-	private static String DOCKER_HOST_NAME;
-	private static int DOCKER_HOST_PORT;
 	private static String DOCKER_HOST_PASSWORD;
-	private static final int CREATE_CONTAINER_SUCCESS_CODE = 201;
-	private static final int START_CONTAINER_SUCCESS_CODE = 204;
-	private static final int INSPECT_CONTAINER_SUCCESS_CODE = 200;
-	private static final int KILL_CONTAINER_SUCCESS_CODE = 204;
-	private static final int REMOVE_CONTAINER_SUCCESS_CODE = 204;
 
-	private static int CPU_CFS_PERIOD_US; 
+	private static int CPU_CFS_PERIOD_US;
 	private static final String LXC_CPUSET_CPUS = "lxc.cgroup.cpuset.cpus";
-//	private static final String LXC_MEMORY_LIMIT_IN_BYTES = "lxc.cgroup.memory.limit_in_bytes";
 	private static final String LXC_NETWORK_VETH_PAIR = "lxc.network.veth.pair";
 	private static final String LXC_CPU_QUOTA = "lxc.cgroup.cpu.cfs_quota_us";
+	private static final String LXC_MEMORY_LIMIT = "lxc.cgroup.memory.limit_in_bytes";
 
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
-
-	private Gson gson = new GsonBuilder().setFieldNamingPolicy(
-			FieldNamingPolicy.UPPER_CAMEL_CASE).create();
-	private HttpRequester httpRequester = new HttpRequester();
-
+	
+	@Autowired
+	private DockerDaemonMessenger dockerDaemonMessenger;
+	@Autowired
+	private ResourceNode resourceNode;
+	
 	public DockerApi() {
 		Properties prop = new Properties();
 		try {
-			prop.load(DockerApi.class.getClassLoader()
-					.getResourceAsStream(PROPERTIES_FILE_NAME));
-			DOCKER_HOST_NAME = prop.getProperty("DOCKER_HOST_NAME", "0.0.0.0");
-			DOCKER_HOST_PORT = Integer.valueOf(prop.getProperty(
-					"DOCKER_HOST_PORT", "2375"));
+			InputStream inputStream = DockerApi.class.getClassLoader()
+					.getResourceAsStream(PROPERTIES_FILE_NAME);
+			if (inputStream != null) {
+				prop.load(inputStream);
+			} else {
+				logger.fatal("docker-service property file not exist");
+			}
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/docker");
 			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
 			VETHID = Integer.valueOf(prop.getProperty("VETHID"));
-			CPU_CFS_PERIOD_US = Integer.valueOf(prop.getProperty("CPU_CFS_PERIOD_US"));
+			CPU_CFS_PERIOD_US = Integer.valueOf(prop
+					.getProperty("CPU_CFS_PERIOD_US"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -76,39 +71,43 @@ public class DockerApi {
 	 * @return current resource status
 	 */
 	public TestResourceModel getCurrentResourceStatus() {
-		return ResourceNode.getInstance().getCurrentStatus();
+		return resourceNode.getCurrentStatus();
 	}
-	
+
 	public AgentModel createTestContainer(ResourceInfoModel resource) {
 		AgentModel result = new AgentModel();
-		resource = ResourceNode.getInstance().requestResource(resource);
+		resource = resourceNode.requestResource(resource);
 		System.out.println("get resourceNode response.");
-		if (resource == null)
+		if (resource == null) {
 			return null;
-		result.setId(createContainerAndSetUploadBandwidth(getCreateContainerWithSetting(resource)));
+		}
+		CreateContainer createContainer = getCreateContainerFromResourceInfo(resource);
+		String id = dockerDaemonMessenger.createContainer(createContainer);
+		result.setId(id);
 		System.out.println("create finish.");
 		if (result.getId() != null) {
-			if (!startContainerByIdAndSetLxcConfigWithQuota(result.getId(),
-					resource))
+			if (!dockerDaemonMessenger
+					.startContainer(getStartContainer(resource)))
 				return null;
 		}
 		System.out.println("start finish.");
 		setContainerDownloadBandWidth(resource);
 		System.out.println("create container finish.");
-		Container container = inspectContainer(result.getId());
+		InspectContainer container = dockerDaemonMessenger
+				.inspectContainer(result.getId());
 		result.setHostName(getHostInet4Address("eth0"));
-		result.setPort(Integer.valueOf(container.getPort()));
+		result.setPort(Integer.valueOf(container.getAgentPort()));
 		result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
 		result.setResourceInfo(resource);
 		return result;
 	}
 
-	public AgentModel createContainerAndSetCpuQuota(ResourceInfoModel resource) {
+	public AgentModel createContainer(ResourceInfoModel resource) {
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
 		cmds.add("opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
-					+ "/opt/bench4q-agent-publish/*.jar");
+				+ "/opt/bench4q-agent-publish/*.jar");
 		resource.setImageName(IMAGE_NAME);
 		return createTestContainer(resource);
 	}
@@ -136,37 +135,31 @@ public class DockerApi {
 		return result;
 	}
 
-	private boolean startContainerByIdAndSetLxcConfigWithQuota(
-			String containerId, ResourceInfoModel resource) {
+	private StartContainer getStartContainer(ResourceInfoModel resource) {
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
 		ports.add("");
-		startContainer.setLxcConf(getContainerLxcConfigWithQuota(resource));
+		startContainer.setLxcConf(getLxcConf(resource));
 		startContainer.setPortbindings(ports);
 		startContainer.setPrivileged(true);
-		try {
-			HttpResponse response = httpRequester.sendPostJson(DOCKER_HOST_NAME
-					+ ":" + DOCKER_HOST_PORT + "/containers/" + containerId
-					+ "/start", gson.toJson(startContainer), null);
-			if (response.getCode() == START_CONTAINER_SUCCESS_CODE)
-				return true;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return false;
+		return startContainer;
 	}
 
-	private Map<String, String> getContainerLxcConfigWithQuota(
-			ResourceInfoModel resource) {
+	private Map<String, String> getLxcConf(ResourceInfoModel resource) {
 		Map<String, String> result = new HashMap<String, String>();
-		System.out.println(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio());
-		result.put(LXC_CPU_QUOTA, String.valueOf(CPU_CFS_PERIOD_US * resource.getCpu() / resource.getvCpuRatio()));
+		result.put(
+				LXC_CPU_QUOTA,
+				String.valueOf(CPU_CFS_PERIOD_US * resource.getCpu()
+						/ resource.getvCpuRatio()));
 		result.put(LXC_NETWORK_VETH_PAIR, "veth" + VETHID++);
+		result.put(LXC_MEMORY_LIMIT,
+				String.valueOf(resource.getMemoryKB() * 1024));
 		StringBuilder stringBuilder = new StringBuilder();
-		for(int cpuId : resource.getCpuSet()){
+		for (int cpuId : resource.getCpuSet()) {
 			stringBuilder.append(cpuId).append(",");
 		}
-		result.put(LXC_CPUSET_CPUS, stringBuilder.substring(0, stringBuilder.length() - 1));
+		result.put(LXC_CPUSET_CPUS,
+				stringBuilder.substring(0, stringBuilder.length() - 1));
 		// Properties prop = new Properties();
 		// try {
 		//
@@ -209,7 +202,7 @@ public class DockerApi {
 				+ "kbps latency 50ms burst 50000 mpu 64 mtu 1500";
 	}
 
-	private CreateContainer getCreateContainerWithSetting(
+	private CreateContainer getCreateContainerFromResourceInfo(
 			ResourceInfoModel resource) {
 		CreateContainer result = new CreateContainer();
 		if (resource.getUploadBandwidthKByte() != 0) {
@@ -219,57 +212,7 @@ public class DockerApi {
 		}
 		result.setCmd(resource.getCmds());
 		result.setImage(resource.getImageName());
-		result.setMemoryByte(resource.getMemoryKB() * 1024);
 		return result;
-	}
-
-	private String createContainerAndSetUploadBandwidth(
-			CreateContainer createContainer) {
-		String result = null;
-		try {
-			System.out.println("starting call docker api create.");
-			HttpResponse response = httpRequester.sendPostJson(DOCKER_HOST_NAME
-					+ ":" + DOCKER_HOST_PORT + "/containers/create",
-					gson.toJson(createContainer), null);
-			System.out.println("get docker creation response");
-			if (response.getCode() == CREATE_CONTAINER_SUCCESS_CODE) {
-				Container createContainerResponse = gson
-						.fromJson(response.getContent(),
-								Container.class);
-				result = createContainerResponse.getId();
-			}
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return result;
-	}
-
-	/**
-	 * 
-	 * @return container info
-	 */
-	private Container inspectContainer(String id) {
-		InspectContainer inspectContainer = new InspectContainer();
-		try {
-			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME
-					+ ":" + DOCKER_HOST_PORT + "/containers/" + id + "/json",
-					null, null);
-			if (response.getCode() == INSPECT_CONTAINER_SUCCESS_CODE) {
-				inspectContainer = gson.fromJson(response.getContent(),
-						InspectContainer.class);
-				inspectContainer.setIp(DOCKER_HOST_NAME);
-				inspectContainer.setPort(inspectContainer.getHostPort());
-				inspectContainer.setMonitorPort(inspectContainer
-						.getMonitorPort());
-			}
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return inspectContainer;
 	}
 
 	/**
@@ -280,26 +223,23 @@ public class DockerApi {
 	 * @return true if succeed
 	 */
 	public boolean remove(AgentModel agent) {
+		boolean result = false;
 		guardLogDirectoryExist();
 		makeContainerLogDir(agent.getId());
 		try {
-
 			Runtime.getRuntime().exec(
-					"docker cp " + agent.getId() + ":/logs/log.log "
-							+ "./log/"
+					"docker cp " + agent.getId() + ":/logs/log.log " + "./log/"
 							+ agent.getId());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if (killContainerPost(agent) == KILL_CONTAINER_SUCCESS_CODE
-				| removeContainerPost(agent) == REMOVE_CONTAINER_SUCCESS_CODE) {
-			System.out.println("starting remove " + agent.getId());
-			if (ResourceNode.getInstance() != null)
-				ResourceNode.getInstance().releaseResource(agent);
-			return true;
-		} else {
-			return false;
+		if (dockerDaemonMessenger.killContainer(agent.getId())
+				& dockerDaemonMessenger.removeContainer(agent.getId())) {
+			System.out.println("removed " + agent.getId());
+			resourceNode.releaseResource(agent);
+			result = true;
 		}
+		return result;
 	}
 
 	private void makeContainerLogDir(String id) {
@@ -319,50 +259,15 @@ public class DockerApi {
 		}
 	}
 
-	private int killContainerPost(AgentModel agent) {
-		HttpResponse response = null;
-		try {
-			response = httpRequester.sendPostJson(DOCKER_HOST_NAME + ":"
-					+ DOCKER_HOST_PORT + "/containers/" + agent.getId()
-					+ "/kill", null, null);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		if (response != null)
-			return response.getCode();
-		else
-			return 0;
-	}
-
-	private int removeContainerPost(AgentModel agent) {
-		HttpResponse response = null;
-		try {
-			response = httpRequester.sendDelete(DOCKER_HOST_NAME + ":"
-					+ DOCKER_HOST_PORT + "/containers/" + agent.getId(),
-					null, null);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		if (response != null)
-			return response.getCode();
-		else
-			return 0;
-	}
-
-	public List<AgentModel> getContainerList() {
+	public List<AgentModel> getAgentList() {
 		List<AgentModel> result = new ArrayList<AgentModel>();
-		try {
-			HttpResponse response = httpRequester.sendGet(DOCKER_HOST_NAME
-					+ ":" + DOCKER_HOST_PORT + "/containers/json", null, null);
-			result = gson.fromJson(response.getContent(),
-					new TypeToken<List<AgentModel>>() {
-					}.getType());
-		} catch (ParseException e) {
-			e.printStackTrace();
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		List<Container> containers = dockerDaemonMessenger.listContainer();
+		for (Container container : containers) {
+			if (container.getImage().contains("agent")) {
+				AgentModel agent = new AgentModel();
+				agent.setId(container.getId());
+				result.add(agent);
+			}
 		}
 		return result;
 	}
