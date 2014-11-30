@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.xml.bind.JAXBException;
 
+import org.bench4q.docker.model.CreatedContainerList;
 import org.bench4q.docker.node.DockerApi;
 import org.bench4q.docker.node.ResourceNode;
 import org.bench4q.share.communication.HttpRequester;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class ContainerController {
 	private static final DockerApi controller = new DockerApi();
 	private HttpRequester httpRequester = new HttpRequester();
+
+	private CreatedContainerList createdContainerList = new CreatedContainerList();
 
 	private String buildBaseUrl() {
 		return "133.133.134.175:5656/docker";
@@ -68,6 +71,7 @@ public class ContainerController {
 					if (dockerResponse.isSuccess()) {
 						AgentModel agent = dockerResponse.getAgentModel();
 						result.add(agent);
+
 						System.out.println(agent.getId());
 						System.out.println(agent.getPort());
 						System.out.println(agent.getMonitorPort());
@@ -133,6 +137,12 @@ public class ContainerController {
 		}
 	}
 
+	@RequestMapping(value = "/containers")
+	@ResponseBody
+	public CreatedContainerList getContaiers() {
+		return this.getContaiers();
+	}
+
 	@RequestMapping(value = "/createTestContainer", method = RequestMethod.POST)
 	@ResponseBody
 	public MainFrameDockerResponseModel createTestContainer(
@@ -148,6 +158,7 @@ public class ContainerController {
 			System.out.println("remove failed container");
 			return setResponseModel(false, "start agent fail", null);
 		}
+		this.getContaiers().getAgentModels().add(agentModel);
 		postResourInfo(agentModel, resource);
 		System.out.println("test container starts up.");
 		return setResponseModel(true, null, agentModel);
@@ -187,6 +198,19 @@ public class ContainerController {
 	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
 		MainFrameResponseModel result = new MainFrameResponseModel();
 		result.setSuccess(controller.remove(agent));
+		if (result.isSuccess()) {
+			AgentModel agentModelToRemoved = null;
+			for (AgentModel agentModel : this.getContaiers().getAgentModels()) {
+				if (agentModel.getPort() == agent.getPort()) {
+					agentModelToRemoved = agentModel;
+				}
+			}
+			if (agentModelToRemoved != null) {
+
+				this.getContaiers().getAgentModels()
+						.remove(agentModelToRemoved);
+			}
+		}
 		return result;
 	}
 
