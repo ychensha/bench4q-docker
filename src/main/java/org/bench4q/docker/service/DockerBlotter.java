@@ -1,4 +1,4 @@
-package org.bench4q.docker.node;
+package org.bench4q.docker.service;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -43,20 +43,15 @@ public class DockerBlotter {
 	
 	private int vCpuRatio;
 	private double containerHealthThreshold;
-	private long totalUploadBandwidthKB = 10 * 1000;
-	private long freeUploadBandwidthKB;
-	private long totalDownloadBandwidthKB = 10 * 1000;
-	private long freeDownloadBandwidthKB; 
 	private int physicalCpu;
-	private int totalVCpu;
-	private int freeVCpu;
-	private long totalMemoryKB;
-	private long freeMemoryKB;
+	
+	private TestResourceModel testResourceModel;
 
 	private static final String PROCFS_MEMINFO = "/proc/meminfo";
 	private static final String PROCFS_CPUINFO = "/proc/cpuinfo";
 	private static final String MEMTOTAL_STRING = "MemTotal";
 	private static final String MEMFREE_STRING = "MemFree";
+	private static final String MEMCACHED_STRING = "Cached";
 	private static final Pattern PROCFS_MEMFILE_FORMAT = Pattern
 			.compile("^([a-zA-Z]*):[ \t]*([0-9]*)[ \t]kB");
 	private static final Pattern PROCFS_CPUFILE_FORMAT = Pattern
@@ -74,9 +69,11 @@ public class DockerBlotter {
 				Matcher mat = PROCFS_MEMFILE_FORMAT.matcher(line);
 				if (mat.find()) {
 					if (mat.group(1).equals(MEMTOTAL_STRING))
-						totalMemoryKB = Long.parseLong(mat.group(2));
+						testResourceModel.setTotalMemory(Long.parseLong(mat.group(2)));
 					else if (mat.group(1).equals(MEMFREE_STRING))
-						freeMemoryKB = Long.parseLong(mat.group(2));
+						testResourceModel.setFreeMemory(Long.parseLong(mat.group(2)));
+					else if (mat.group(1).equals(MEMCACHED_STRING))
+						testResourceModel.setFreeMemory(testResourceModel.getFreeMemory() + Long.parseLong(mat.group(2)));
 				}
 			}
 			bufferedReader.close();
@@ -90,8 +87,9 @@ public class DockerBlotter {
 			bufferedReader.close();
 		} catch (FileNotFoundException e) {
 			// may be it's not Linux, suppose we get 2GB memory and 2 CPU
-			freeMemoryKB = totalMemoryKB = 2 * 1024 * 1024;
-			physicalCpu = 2;
+			testResourceModel.setFreeMemory(2 * 1024 * 1024);
+			testResourceModel.setTotalMemory(2 * 1024 * 1024);
+			testResourceModel.setTotalCpu(4);
 			logger.warn("can not find procfs");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -105,19 +103,21 @@ public class DockerBlotter {
 					"docker-service.properties"));
 			vCpuRatio = Integer.valueOf(prop.getProperty("VCPU_RATIO", "3"));
 			containerHealthThreshold = Double.valueOf(prop.getProperty("CONTAINER_HEALTH_THRESHOLD", "0.85"));
-			totalDownloadBandwidthKB = Long.valueOf(prop.getProperty("DOWNLOADBANDWIDTH", "10000"));
-			totalUploadBandwidthKB = Long.valueOf(prop.getProperty("UPLOADBANDWIDTH", "10000"));
+			testResourceModel.setTotalDownloadBandwidthKB(Long.valueOf(prop.getProperty("DOWNLOADBANDWIDTH", "10000")));
+			testResourceModel.setFreeDownloadBandwidthKB(testResourceModel.getTotalDownloadBandwidthKB());
+			testResourceModel.setTotalUploadBandwidthKB(Long.valueOf(prop.getProperty("UPLOADBANDWIDTH", "10000")));
+			testResourceModel.setFreeUploadBandwidthKB(testResourceModel.getTotalUploadBandwidthKB());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	public void init() {
+		testResourceModel = new TestResourceModel();
 		readSystemInfo();
 		readProperties();
-		freeUploadBandwidthKB = totalUploadBandwidthKB;
-		freeDownloadBandwidthKB = totalDownloadBandwidthKB;
-		freeVCpu = totalVCpu = vCpuRatio * physicalCpu;
+		testResourceModel.setTotalCpu(physicalCpu * vCpuRatio);
+		testResourceModel.setFreeCpu(testResourceModel.getTotalCpu());
 		processorQueue = new PriorityQueue<Cpu>(physicalCpu, new Comparator<Cpu>() {
 			public int compare(Cpu c1, Cpu c2) {
 				return c1.getUsage() - c2.getUsage();
@@ -133,44 +133,12 @@ public class DockerBlotter {
 		}
 	}
 
-	public int getvCpuRatio() {
-		return vCpuRatio;
-	}
-
-	public void setvCpuRatio(int vCpuRatio) {
-		this.vCpuRatio = vCpuRatio;
-	}
-
-	public double getContainerHealthThreshold() {
-		return containerHealthThreshold;
-	}
-
-	public void setContainerHealthThreshold(double containerHealthThreshold) {
-		this.containerHealthThreshold = containerHealthThreshold;
-	}
-
-	public long getUploadBandwidthKB() {
-		return totalUploadBandwidthKB;
-	}
-
-	public void setUploadBandwidthKB(long uploadBandwidth) {
-		this.totalUploadBandwidthKB = uploadBandwidth;
-	}
-
-	public long getDownloadBandwidthKB() {
-		return totalDownloadBandwidthKB;
-	}
-
-	public void setDownloadBandwidthKB(long downloadBandwidth) {
-		this.totalDownloadBandwidthKB = downloadBandwidth;
-	}
-
 	private boolean isEnough(ResourceInfoModel resourceInfo) {
 		boolean result = false;
-		if (resourceInfo.getCpu() <= getFreeVCpu()
-				&& resourceInfo.getMemoryKB() <= getFreeMemoryKB()
-				&& resourceInfo.getDownloadBandwidthKByte() <= getDownloadBandwidthKB()
-				&& resourceInfo.getUploadBandwidthKByte() <= getUploadBandwidthKB())
+		if (resourceInfo.getCpu() <= testResourceModel.getFreeCpu()
+				&& resourceInfo.getMemoryKB() <= testResourceModel.getFreeMemory()
+				&& resourceInfo.getDownloadBandwidthKByte() <= testResourceModel.getFreeDownloadBandwidthKB()
+				&& resourceInfo.getUploadBandwidthKByte() <= testResourceModel.getFreeUploadBandwidthKB())
 			result = true;
 		return result;
 	}
@@ -194,10 +162,10 @@ public class DockerBlotter {
 			processorQueue.add(cpu);
 		}
 		resourceInfo.setCpuSet(cpuSet);
-		freeVCpu -= resourceInfo.getCpu();
-		freeMemoryKB -= resourceInfo.getMemoryKB();
-		freeDownloadBandwidthKB -= resourceInfo.getDownloadBandwidthKByte();
-		freeUploadBandwidthKB -= resourceInfo.getUploadBandwidthKByte();
+		testResourceModel.setFreeCpu(testResourceModel.getFreeCpu() - resourceInfo.getCpu());
+		testResourceModel.setFreeMemory(testResourceModel.getFreeMemory() - resourceInfo.getMemoryKB());
+		testResourceModel.setFreeUploadBandwidthKB(testResourceModel.getFreeUploadBandwidthKB() - resourceInfo.getUploadBandwidthKByte());
+		testResourceModel.setFreeDownloadBandwidthKB(testResourceModel.getFreeDownloadBandwidthKB() - resourceInfo.getDownloadBandwidthKByte());
 		
 		resourceInfo.setHealthThreshold(containerHealthThreshold);
 		resourceInfo.setvCpuRatio(vCpuRatio);
@@ -206,14 +174,18 @@ public class DockerBlotter {
 	
 	public void releaseResource(ResourceInfoModel resourceInfo){
 		// update avalCpu
+		if(resourceInfo == null){
+			logger.warn("release resource for null");
+			return;
+		}
 		for (int cpuId : resourceInfo.getCpuSet()) {
 			Cpu cpu = processorList.get(cpuId);
 			cpu.setUsage(cpu.getUsage() - 1);
-			freeVCpu++;
 		}
-		freeMemoryKB += resourceInfo.getMemoryKB();
-		freeDownloadBandwidthKB += resourceInfo.getDownloadBandwidthKByte();
-		freeUploadBandwidthKB += resourceInfo.getUploadBandwidthKByte();
+		testResourceModel.setFreeCpu(testResourceModel.getFreeCpu() + resourceInfo.getCpuSet().size());
+		testResourceModel.setFreeMemory(testResourceModel.getFreeMemory() + resourceInfo.getMemoryKB());
+		testResourceModel.setFreeUploadBandwidthKB(testResourceModel.getFreeUploadBandwidthKB() + resourceInfo.getUploadBandwidthKByte());
+		testResourceModel.setFreeDownloadBandwidthKB(testResourceModel.getFreeDownloadBandwidthKB() + resourceInfo.getDownloadBandwidthKByte());
 		// update the Priority Queue
 		int size = processorList.size();
 		for (int i = 0; i < size; ++i) {
@@ -226,27 +198,10 @@ public class DockerBlotter {
 	 * query for current status, including free vcpu, free memory, etc.
 	 */
 	public TestResourceModel getCurrentStatus(){
-		TestResourceModel result = new TestResourceModel();
-		result.setFreeCpu(freeVCpu);
-		result.setTotalCpu(totalVCpu);
-		result.setUsedCpu(totalVCpu - freeVCpu);
-		result.setTotalMemory(totalMemoryKB);
-		result.setFreeMemory(freeMemoryKB);
-		result.setUsedMemory(totalMemoryKB - freeMemoryKB);
-		result.setTotalDownloadBandwidthKB(totalDownloadBandwidthKB);
-		result.setFreeDownloadBandwidthKB(freeDownloadBandwidthKB);
-		result.setUsedDownloadBandwidthKB(totalDownloadBandwidthKB - freeDownloadBandwidthKB);
-		result.setTotalUploadBandwidthKB(totalUploadBandwidthKB);
-		result.setFreeUploadBandwidthKB(freeUploadBandwidthKB);
-		result.setUsedUploadBandwidthKB(totalUploadBandwidthKB - freeUploadBandwidthKB);
-		return result;
-	}
-
-	private long getFreeMemoryKB() {
-		return freeMemoryKB;
-	}
-
-	private int getFreeVCpu() {
-		return freeVCpu;
+		testResourceModel.setUsedCpu(testResourceModel.getTotalCpu() - testResourceModel.getFreeCpu());
+		testResourceModel.setUsedMemory(testResourceModel.getTotalMemory() - testResourceModel.getFreeMemory());
+		testResourceModel.setUsedUploadBandwidthKB(testResourceModel.getTotalUploadBandwidthKB() - testResourceModel.getFreeUploadBandwidthKB());
+		testResourceModel.setUsedDownloadBandwidthKB(testResourceModel.getTotalDownloadBandwidthKB() - testResourceModel.getFreeDownloadBandwidthKB());
+		return testResourceModel;
 	}
 }

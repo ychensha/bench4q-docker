@@ -7,8 +7,8 @@ import com.google.gson.annotations.SerializedName;
 
 
 public class CreateContainer {
-	private long memory;
-	private long memorySwap;
+//	private long memory;
+//	private long memorySwap;
 	private String cpuset;
 	private boolean attachStdin = false;
 	private boolean attachStdout = false;
@@ -41,21 +41,21 @@ public class CreateContainer {
 		return image;
 	}
 
-	public long getMemoryByte() {
-		return memory;
-	}
-
-	public void setMemoryByte(long memory) {
-		this.memory = memory;
-	}
-
-	public long getMemorySwap() {
-		return memorySwap;
-	}
-
-	public void setMemorySwap(long memorySwap) {
-		this.memorySwap = memorySwap;
-	}
+//	public long getMemoryByte() {
+//		return memory;
+//	}
+//
+//	public void setMemoryByte(long memory) {
+//		this.memory = memory;
+//	}
+//
+//	public long getMemorySwap() {
+//		return memorySwap;
+//	}
+//
+//	public void setMemorySwap(long memorySwap) {
+//		this.memorySwap = memorySwap;
+//	}
 
 	public boolean isAttachStdin() {
 		return attachStdin;

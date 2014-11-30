@@ -1,13 +1,9 @@
 package org.bench4q.docker.api;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import javax.xml.bind.JAXBException;
-
-import org.bench4q.docker.node.DockerApi;
-import org.bench4q.docker.node.ResourceNode;
+import org.bench4q.docker.service.DockerService;
+import org.bench4q.docker.service.ResourceNode;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.helper.MarshalHelper;
@@ -24,7 +20,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/docker")
 public class ContainerController {
 	@Autowired
-	private DockerApi controller;
+	private DockerService controller;
 	@Autowired
 	private HttpRequester httpRequester;
 	@Autowired
@@ -36,7 +32,7 @@ public class ContainerController {
 
 	public void postResourInfo(AgentModel agent, ResourceInfoModel resourceInfo) {
 		try {
-			HttpResponse response = httpRequester.sendPostXml(
+			httpRequester.sendPostXml(
 					buildAgentMonitorUrl(agent) + "/monitor/setResourceInfo",
 					MarshalHelper
 							.marshal(ResourceInfoModel.class, resourceInfo),
@@ -92,6 +88,7 @@ public class ContainerController {
 			controller.remove(agentModel);
 			return setResponseModel(false, "start agent fail", null);
 		}
+		postResourInfo(agentModel, resource);
 		System.out.println("agent starts up.");
 		return setResponseModel(true, null, agentModel);
 	}
@@ -134,6 +131,8 @@ public class ContainerController {
 					break;
 				response = httpRequester.sendGet(agent.getHostName() + ":"
 						+ agent.getPort(), null, null);
+				response = httpRequester.sendGet(agent.getHostName() + ":"
+						+ agent.getMonitorPort(), null, null);
 				result = response.getCode();
 				Thread.currentThread();
 				Thread.sleep(1000);

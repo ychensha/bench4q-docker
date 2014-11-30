@@ -1,4 +1,4 @@
-package org.bench4q.docker.node;
+package org.bench4q.docker.service;
 
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -17,7 +17,7 @@ public class ResourceNode {
 	private DockerBlotter dockerBlotter;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 	@Autowired
-	private DockerApi dockerApi;
+	private DockerService dockerApi;
 
 	@PostConstruct
 	public void init() {
@@ -35,8 +35,7 @@ public class ResourceNode {
 
 	public ResourceInfoModel requestResource(ResourceInfoModel resource) {
 		if (resource == null)
-			return resource;
-
+			return null;
 		ResourceInfoModel result = null;
 		lock.writeLock().lock();
 		try {
@@ -47,10 +46,10 @@ public class ResourceNode {
 		return result;
 	}
 
-	public void releaseResource(AgentModel agent) {
+	public void releaseResource(ResourceInfoModel resourceInfoModel) {
 		lock.writeLock().lock();
 		try {
-			dockerBlotter.releaseResource(agent.getResourceInfo());
+			dockerBlotter.releaseResource(resourceInfoModel);
 		} finally {
 			lock.writeLock().unlock();
 		}

@@ -1,4 +1,4 @@
-package org.bench4q.docker.node;
+package org.bench4q.docker.service;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +14,6 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.bench4q.docker.communication.DockerDaemonMessenger;
-import org.bench4q.docker.communication.impl.DockerDaemonMessengerImpl;
 import org.bench4q.docker.model.Container;
 import org.bench4q.docker.model.CreateContainer;
 import org.bench4q.docker.model.InspectContainer;
@@ -26,11 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class DockerApi {
-	private Logger logger = Logger.getLogger(DockerApi.class);
+public class DockerService {
+	private Logger logger = Logger.getLogger(DockerService.class);
 
 	private static int VETHID = 1;
-	public static String IMAGE_NAME;
+	private static String IMAGE_NAME;
 	private static String DOCKER_HOST_PASSWORD;
 
 	private static int CPU_CFS_PERIOD_US;
@@ -41,15 +40,18 @@ public class DockerApi {
 
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
 	
+	private Map<String, ResourceInfoModel> containerInfoMap;
+
 	@Autowired
 	private DockerDaemonMessenger dockerDaemonMessenger;
 	@Autowired
 	private ResourceNode resourceNode;
-	
-	public DockerApi() {
+
+	public DockerService() {
 		Properties prop = new Properties();
+		containerInfoMap = new HashMap<String, ResourceInfoModel>();
 		try {
-			InputStream inputStream = DockerApi.class.getClassLoader()
+			InputStream inputStream = DockerService.class.getClassLoader()
 					.getResourceAsStream(PROPERTIES_FILE_NAME);
 			if (inputStream != null) {
 				prop.load(inputStream);
@@ -58,7 +60,6 @@ public class DockerApi {
 			}
 			IMAGE_NAME = prop.getProperty("IMAGE_NAME", "chensha/docker");
 			DOCKER_HOST_PASSWORD = prop.getProperty("HOST_LINUX_PASSWORD");
-			VETHID = Integer.valueOf(prop.getProperty("VETHID"));
 			CPU_CFS_PERIOD_US = Integer.valueOf(prop
 					.getProperty("CPU_CFS_PERIOD_US"));
 		} catch (IOException e) {
@@ -86,8 +87,8 @@ public class DockerApi {
 		result.setId(id);
 		System.out.println("create finish.");
 		if (result.getId() != null) {
-			if (!dockerDaemonMessenger
-					.startContainer(getStartContainer(resource)))
+			if (!dockerDaemonMessenger.startContainer(getStartContainer(
+					resource, id)))
 				return null;
 		}
 		System.out.println("start finish.");
@@ -99,6 +100,7 @@ public class DockerApi {
 		result.setPort(Integer.valueOf(container.getAgentPort()));
 		result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
 		result.setResourceInfo(resource);
+		containerInfoMap.put(id, resource);
 		return result;
 	}
 
@@ -135,13 +137,15 @@ public class DockerApi {
 		return result;
 	}
 
-	private StartContainer getStartContainer(ResourceInfoModel resource) {
+	private StartContainer getStartContainer(ResourceInfoModel resource,
+			String id) {
 		StartContainer startContainer = new StartContainer();
 		List<String> ports = new ArrayList<String>();
 		ports.add("");
 		startContainer.setLxcConf(getLxcConf(resource));
 		startContainer.setPortbindings(ports);
 		startContainer.setPrivileged(true);
+		startContainer.setId(id);
 		return startContainer;
 	}
 
@@ -224,6 +228,9 @@ public class DockerApi {
 	 */
 	public boolean remove(AgentModel agent) {
 		boolean result = false;
+		if(!containerInfoMap.containsKey(agent.getId())){
+			return false;
+		}
 		guardLogDirectoryExist();
 		makeContainerLogDir(agent.getId());
 		try {
@@ -236,8 +243,9 @@ public class DockerApi {
 		if (dockerDaemonMessenger.killContainer(agent.getId())
 				& dockerDaemonMessenger.removeContainer(agent.getId())) {
 			System.out.println("removed " + agent.getId());
-			resourceNode.releaseResource(agent);
+			resourceNode.releaseResource(agent.getResourceInfo());
 			result = true;
+			containerInfoMap.remove(agent.getId());
 		}
 		return result;
 	}

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 public class StartContainer {
+	private String id;
 	private PortBindings portBindings;
 	private List<LxcConf> lxcConf;
 	private boolean privileged;
@@ -40,6 +41,14 @@ public class StartContainer {
 
 	public void setPrivileged(boolean privileged) {
 		this.privileged = privileged;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 }
 
