@@ -1,13 +1,10 @@
 package org.bench4q.docker.api;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.bench4q.docker.service.DockerService;
 import org.bench4q.docker.service.ResourceNode;
 
-import javax.xml.bind.JAXBException;
 
 import org.bench4q.docker.model.CreatedContainerList;
 import org.bench4q.share.communication.HttpRequester;
@@ -133,9 +130,9 @@ public class ContainerController {
 	private boolean isParamLegal(ResourceInfoModel model) {
 		boolean result = true;
 		if (model.getCpu() <= 0 || model.getCmds() == null
-				|| model.getImageName() == null || model.getMemoryKB() <= 0
-				|| model.getDownloadBandwidthKByte() <= 0
-				|| model.getUploadBandwidthKByte() <= 0)
+				|| model.getImageName() == null || model.getMemoryKB() < 0
+				|| model.getDownloadBandwidthKByte() < 0
+				|| model.getUploadBandwidthKByte() < 0)
 			result = false;
 		return result;
 	}

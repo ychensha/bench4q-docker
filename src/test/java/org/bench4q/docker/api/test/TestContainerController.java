@@ -28,17 +28,19 @@ public class TestContainerController extends TestCase{
 		resourceInfo.setCpu(4);
 		resourceInfo.setMemoryKB(512 * 1024);
 		resourceInfo.setDownloadBandwidthKByte(300);
-		resourceInfo.setUploadBandwidthKByte(500);
+		resourceInfo.setUploadBandwidthKByte(200);
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
+//		cmds.add("/opt/monitor/*.sh&&java -server -jar /opt/bench4q-agent-publish/*.jar&&sudo -S tc qdisc add dev eth0 root tbf rate 200kbps latency 50ms burst 50000 mpu 64 mtu 1500");
 		cmds.add("/opt/monitor/*.sh&&java -server -jar /opt/bench4q-agent-publish/*.jar");
+//		cmds.add("tc qdisc add dev eth0 root tbf rate 200kbps latency 50ms burst 50000 mpu 64 mtu 1500");
 		resourceInfo.setCmds(cmds);
 		resourceInfo.setImageName("chensha/docker");
 		HttpResponse response = null;
 		try {
 			response = httpRequester.sendPostXml(buildBaseUrl()
-					+ "/create", MarshalHelper.marshal(
+					+ "/createTestContainer", MarshalHelper.marshal(
 					ResourceInfoModel.class, resourceInfo), null);
 			MainFrameDockerResponseModel dockerResponse = (MainFrameDockerResponseModel) MarshalHelper
 					.unmarshal(MainFrameDockerResponseModel.class,

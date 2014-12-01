@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +40,7 @@ public class DockerService {
 	private static final String LXC_MEMORY_LIMIT = "lxc.cgroup.memory.limit_in_bytes";
 
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
-	
+
 	private Map<String, ResourceInfoModel> containerInfoMap;
 
 	@Autowired
@@ -96,14 +97,19 @@ public class DockerService {
 		System.out.println("create container finish.");
 		InspectContainer container = dockerDaemonMessenger
 				.inspectContainer(result.getId());
-		result.setHostName(getHostInet4Address("eth0"));
-		result.setPort(Integer.valueOf(container.getAgentPort()));
-		result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
-		result.setResourceInfo(resource);
+		try {
+			result.setHostName(getHostInet4Address("eth0"));
+			result.setPort(Integer.valueOf(container.getAgentPort()));
+			result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
+			result.setResourceInfo(resource);
+		} catch (Exception e) {
+			logger.error("inspect container get wrong info.");
+			remove(result);
+			return null;
+		}
 		containerInfoMap.put(id, resource);
 		return result;
 	}
-	
 
 	public AgentModel createContainer(ResourceInfoModel resource) {
 		List<String> cmds = new ArrayList<String>();
@@ -213,6 +219,13 @@ public class DockerService {
 		if (resource.getUploadBandwidthKByte() != 0) {
 			String startupCmd = getTcCmd("eth0",
 					resource.getUploadBandwidthKByte());
+			// "/opt/monitor/*.sh&&tc qdisc add dev eth0 root tbf rate 200kbps
+			// latency 50ms burst 50000 mpu 64 mtu 1500&&
+			// \java -server -jar /opt/bench4q-agent-publish/*.jar"
+			// now it is the only way to set upload bandwidth
+			startupCmd = startupCmd + "&&"
+					+ resource.getCmds().get(resource.getCmds().size() - 1);
+			resource.getCmds().remove(resource.getCmds().size() - 1);
 			resource.getCmds().add(startupCmd);
 		}
 		result.setCmd(resource.getCmds());
@@ -229,43 +242,34 @@ public class DockerService {
 	 */
 	public boolean remove(AgentModel agent) {
 		boolean result = false;
-		if(!containerInfoMap.containsKey(agent.getId())){
-			return false;
-		}
-		guardLogDirectoryExist();
-		makeContainerLogDir(agent.getId());
+		String logFilePath = "./AgentLog/"
+				+ new Date().toString().replace(':', '_');
+		makeContainerLogDir(logFilePath);
 		try {
 			Runtime.getRuntime().exec(
-					"docker cp " + agent.getId() + ":/logs/log.log " + "./log/"
-							+ agent.getId());
+					"docker cp " + agent.getId() + ":/logs/log.log "
+							+ logFilePath);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		if (dockerDaemonMessenger.killContainer(agent.getId())
 				& dockerDaemonMessenger.removeContainer(agent.getId())) {
 			System.out.println("removed " + agent.getId());
-			resourceNode.releaseResource(agent.getResourceInfo());
+			if(resourceNode != null)
+				resourceNode.releaseResource(agent.getResourceInfo());
 			result = true;
 			containerInfoMap.remove(agent.getId());
 		}
 		return result;
 	}
 
-	private void makeContainerLogDir(String id) {
-		File dir = new File("./log/" + id);
+	private void makeContainerLogDir(String logDirName) {
+		File dir = new File(logDirName);
 		if (dir.exists()) {
 			System.out.println("container log dir existing");
 			return;
 		}
-		dir.mkdir();
-	}
-
-	private void guardLogDirectoryExist() {
-		File dir = new File("./log");
-		if (!dir.exists()) {
-			if (!dir.mkdirs())
-				System.out.println("make service log dir fail");
-		}
+		dir.mkdirs();
 	}
 
 	public List<AgentModel> getAgentList() {
