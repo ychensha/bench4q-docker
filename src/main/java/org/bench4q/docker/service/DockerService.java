@@ -243,7 +243,7 @@ public class DockerService {
 	public boolean remove(AgentModel agent) {
 		boolean result = false;
 		String logFilePath = "./AgentLog/"
-				+ new Date().toString().replace(':', '_');
+				+ new Date().toString().replace(' ', '_');
 		makeContainerLogDir(logFilePath);
 		try {
 			Runtime.getRuntime().exec(
