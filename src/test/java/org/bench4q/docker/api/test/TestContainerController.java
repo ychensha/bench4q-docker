@@ -26,7 +26,7 @@ public class TestContainerController extends TestCase{
 	public void testCreateTestContainer(){
 		ResourceInfoModel resourceInfo = new ResourceInfoModel();
 		resourceInfo.setCpu(4);
-		resourceInfo.setMemoryKB(768 * 1024);
+		resourceInfo.setMemoryKB(512 * 1024);
 		resourceInfo.setDownloadBandwidthKByte(300);
 		resourceInfo.setUploadBandwidthKByte(500);
 		List<String> cmds = new ArrayList<String>();

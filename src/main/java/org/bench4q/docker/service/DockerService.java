@@ -103,6 +103,7 @@ public class DockerService {
 		containerInfoMap.put(id, resource);
 		return result;
 	}
+	
 
 	public AgentModel createContainer(ResourceInfoModel resource) {
 		List<String> cmds = new ArrayList<String>();
