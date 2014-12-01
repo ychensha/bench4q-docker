@@ -1,9 +1,15 @@
 package org.bench4q.docker.api;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.bench4q.docker.service.DockerService;
 import org.bench4q.docker.service.ResourceNode;
+
+import javax.xml.bind.JAXBException;
+
+import org.bench4q.docker.model.CreatedContainerList;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
 import org.bench4q.share.helper.MarshalHelper;
@@ -26,6 +32,98 @@ public class ContainerController {
 	@Autowired
 	private ResourceNode resourceNode;
 
+	private CreatedContainerList createdContainerList = new CreatedContainerList();
+
+	private String buildBaseUrl() {
+		return "133.133.134.175:5656/docker";
+	}
+
+	public void removeContainers(List<AgentModel> agents) {
+		if (agents != null) {
+			for (AgentModel agent : agents) {
+				try {
+					HttpResponse response = httpRequester.sendPostXml(
+							buildBaseUrl() + "/remove",
+							MarshalHelper.marshal(AgentModel.class, agent),
+							null);
+					MainFrameResponseModel model = (MainFrameResponseModel) MarshalHelper
+							.unmarshal(MainFrameResponseModel.class,
+									response.getContent());
+					if (model.isSuccess()) {
+						System.out.println("remove " + agent.getId());
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (JAXBException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	public List<AgentModel> createContainers(
+			List<ResourceInfoModel> resourceInfoList) {
+		List<AgentModel> result = new ArrayList<AgentModel>();
+		if (resourceInfoList != null) {
+			for (ResourceInfoModel resourceInfo : resourceInfoList) {
+				HttpResponse response;
+				try {
+					response = httpRequester.sendPostXml(buildBaseUrl()
+							+ "/createTestContainer", MarshalHelper.marshal(
+							ResourceInfoModel.class, resourceInfo), null);
+					MainFrameDockerResponseModel dockerResponse = (MainFrameDockerResponseModel) MarshalHelper
+							.unmarshal(MainFrameDockerResponseModel.class,
+									response.getContent());
+					if (dockerResponse.isSuccess()) {
+						AgentModel agent = dockerResponse.getAgentModel();
+						result.add(agent);
+
+						System.out.println(agent.getId());
+						System.out.println(agent.getPort());
+						System.out.println(agent.getMonitorPort());
+					} else {
+						System.out.println("create fail");
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (JAXBException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return result;
+	}
+
+	public static void main(String[] args) {
+		ContainerController testController = new ContainerController();
+		ResourceInfoModel resourceInfo = new ResourceInfoModel();
+		resourceInfo.setCpu(4);
+		resourceInfo.setMemoryKB(768 * 1024);
+		resourceInfo.setDownloadBandwidthKByte(0);
+		resourceInfo.setUploadBandwidthKByte(0);
+		resourceInfo.setImageName("chensha/docker");
+		List<String> cmds = new ArrayList<String>();
+		cmds.add("/bin/sh");
+		cmds.add("-c");
+		cmds.add("/opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
+				+ "-XX:PermSize=64m -XX:MaxPermSize=64m -Xms500m -Xms500m -Xmn200m /opt/bench4q-agent-publish/*.jar");
+		resourceInfo.setCmds(cmds);
+		resourceInfo.setImageName("chensha/docker");
+		// cmds.add("java -jar /opt/monitor/bench4q-docker-monitor.jar");
+		// cmds.add("java -jar -server -Xms1024M -Xmx1024M /opt/bench4q-agent-publish/*.jav&&java -jar /opt/monitor/bench4q-docker-monitor.jar");
+		// cmds.add("/opt/empty-jetty/start.sh");
+		// cmds.add("java -jar /opt/empty-jetty/empty-jetty-server.jar");
+		resourceInfo.setCmds(cmds);
+
+		List<ResourceInfoModel> resourceInfoList = new ArrayList<ResourceInfoModel>();
+		for (int i = 0; i < 1; i++) {
+			resourceInfoList.add(resourceInfo);
+		}
+		List<AgentModel> agents = testController
+				.createContainers(resourceInfoList);
+		testController.removeContainers(agents);
+	}
+
 	private String buildAgentMonitorUrl(AgentModel agent) {
 		return agent.getHostName() + ":" + agent.getMonitorPort();
 	}
@@ -40,6 +138,12 @@ public class ContainerController {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	@RequestMapping(value = "/containers")
+	@ResponseBody
+	public CreatedContainerList getContaiers() {
+		return this.getContaiers();
 	}
 
 	@RequestMapping(value = "/createTestContainer", method = RequestMethod.POST)
@@ -60,6 +164,7 @@ public class ContainerController {
 			System.out.println("remove failed container");
 			return setResponseModel(false, "start agent fail", null);
 		}
+		this.getContaiers().getAgentModels().add(agentModel);
 		postResourInfo(agentModel, resource);
 		System.out.println("test container starts up.");
 		return setResponseModel(true, null, agentModel);
@@ -98,6 +203,19 @@ public class ContainerController {
 	public MainFrameResponseModel removeContainer(@RequestBody AgentModel agent) {
 		MainFrameResponseModel result = new MainFrameResponseModel();
 		result.setSuccess(controller.remove(agent));
+		if (result.isSuccess()) {
+			AgentModel agentModelToRemoved = null;
+			for (AgentModel agentModel : this.getContaiers().getAgentModels()) {
+				if (agentModel.getPort() == agent.getPort()) {
+					agentModelToRemoved = agentModel;
+				}
+			}
+			if (agentModelToRemoved != null) {
+
+				this.getContaiers().getAgentModels()
+						.remove(agentModelToRemoved);
+			}
+		}
 		return result;
 	}
 
