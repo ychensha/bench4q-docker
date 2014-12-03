@@ -19,6 +19,7 @@ import org.bench4q.docker.model.Container;
 import org.bench4q.docker.model.CreateContainer;
 import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
+import org.bench4q.share.helper.ExceptionLog;
 import org.bench4q.share.master.test.resource.AgentModel;
 import org.bench4q.share.master.test.resource.ResourceInfoModel;
 import org.bench4q.share.master.test.resource.TestResourceModel;
@@ -115,7 +116,7 @@ public class DockerService {
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
-		cmds.add("opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
+		cmds.add("/opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
 				+ "/opt/bench4q-agent-publish/*.jar");
 		resource.setImageName(IMAGE_NAME);
 		return createTestContainer(resource);
@@ -242,20 +243,26 @@ public class DockerService {
 	 */
 	public boolean remove(AgentModel agent) {
 		boolean result = false;
-		String logFilePath = "./AgentLog/"
-				+ new Date().toString().replace(' ', '_');
+		String date = new Date().toString().replace(' ', '_');
+		String logFilePath = "./AgentLog/" + date;
+		String monitorLogPath = "./MonitorLog/" + date;
 		makeContainerLogDir(logFilePath);
+		makeContainerLogDir(monitorLogPath);
 		try {
 			Runtime.getRuntime().exec(
-					"docker cp " + agent.getId() + ":/logs/log.log "
+					"docker cp " + agent.getId() + ":/AgentLogs/log.log "
 							+ logFilePath);
+			Runtime.getRuntime().exec(
+					"docker cp " + agent.getId() + ":/MonitorLogs/log.log "
+							+ monitorLogPath);
 		} catch (IOException e) {
-			e.printStackTrace();
+
+			ExceptionLog.getStackTrace(e);
 		}
 		if (dockerDaemonMessenger.killContainer(agent.getId())
 				& dockerDaemonMessenger.removeContainer(agent.getId())) {
 			System.out.println("removed " + agent.getId());
-			if(resourceNode != null)
+			if (resourceNode != null)
 				resourceNode.releaseResource(agent.getResourceInfo());
 			result = true;
 			containerInfoMap.remove(agent.getId());

@@ -51,7 +51,7 @@ public class JvmInfo {
 				result.setOldUsedKB(Float.valueOf(parts[7]));
 				result.setPermCapacityKB(Float.valueOf(parts[8]));
 				result.setPermUsedKB(Float.valueOf(parts[9]));
-				result.setYoungGcCount(Long.valueOf(parts[10]));
+				result.setYoungGcCount(Double.valueOf(parts[10]));
 				result.setYoungGcTime(Float.valueOf(parts[11]));
 				result.setFullGcCount(Long.valueOf(parts[12]));
 				result.setFullGcTime(Float.valueOf(parts[13]));

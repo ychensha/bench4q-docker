@@ -1,53 +1,27 @@
 package org.bench4q.docker.monitor.model;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 
-import org.apache.log4j.Logger;
 
 /**
  * @author gengpeng info of physical server
  */
 public class NetworkInfo {
-	private int pid;
 	private double kiloBytesTotalPerSecond;
 	private double kiloBytesReceivedPerSecond;
 	private double kiloBytesSentPerSecond;
 	private boolean started = false;
-	private Logger logger = Logger.getLogger(NetworkInfo.class);
-	
-	public NetworkInfo(String name){
-		init(name);
+
+	public NetworkInfo() {
 		startCompute();
 	}
-	
-	private void init(String name) {
-		try {
-			Process p = Runtime.getRuntime().exec("jps");
-			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line = null;
-			while((line = reader.readLine()) != null){
-				if(line.contains(name)){
-					String[] pid = line.split(" ");
-					this.pid = Integer.valueOf(pid[0]);
-				}
-			}
-			if(pid == 0){
-				logger.fatal("Do not catch pid");
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
-	private void startCompute(){
-		if(!started){
+
+	private void startCompute() {
+		if (!started) {
 			new Handler().start();
 			started = true;
 		}
@@ -81,13 +55,13 @@ public class NetworkInfo {
 		private void compute() throws NumberFormatException {
 			double[] receive = new double[] { 0, 0 };
 			double[] send = new double[] { 0, 0 };
-			String path = null;
+			String path =" /proc/net/dev";;
 			FileReader fr = null;
+			long lastTime = -1;
 			while (true) {
 				send[0] = send[1];
 				receive[0] = receive[1];
 				send[1] = receive[1] = 0;
-				path = "/proc/" + pid + "/net/dev";
 				try {
 					fr = new FileReader(path);
 					BufferedReader buff = new BufferedReader(fr);
@@ -105,10 +79,12 @@ public class NetworkInfo {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				kiloBytesReceivedPerSecond = (receive[1] - receive[0]) / 1000;
-				kiloBytesSentPerSecond = (send[1] - send[0]) / 1000;
-				kiloBytesTotalPerSecond = (kiloBytesReceivedPerSecond
-						+ kiloBytesSentPerSecond);
+				long timeRange = (System.currentTimeMillis() - lastTime) / 1000L;
+				kiloBytesReceivedPerSecond = (receive[1] - receive[0]) / 1024
+						/ timeRange;
+				kiloBytesSentPerSecond = (send[1] - send[0]) / 1024 / timeRange;
+				kiloBytesTotalPerSecond = (kiloBytesReceivedPerSecond + kiloBytesSentPerSecond);
+				lastTime = System.currentTimeMillis();
 				try {
 					Thread.currentThread();
 					Thread.sleep(1000);
@@ -123,7 +99,7 @@ public class NetworkInfo {
 				compute();
 			} catch (NumberFormatException e) {
 				e.printStackTrace();
-			} 
+			}
 		}
 	}
 }

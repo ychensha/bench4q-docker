@@ -63,7 +63,8 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 	public boolean startContainer(StartContainer startContainer) {
 		boolean result = false;
 		try {
-			HttpResponse response = httpRequester.sendPostJson(buildBaseUrl() + "/containers/" + startContainer.getId() + "/start",
+			HttpResponse response = httpRequester.sendPostJson(buildBaseUrl()
+					+ "/containers/" + startContainer.getId() + "/start",
 					gson.toJson(startContainer), null);
 			if (response.getCode() == DockerStatusCode.START_CONTAINER_SUCCESS_CODE) {
 				result = true;
@@ -111,7 +112,11 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 					+ "/containers/" + id + "/json", null, null);
 			container = gson.fromJson(httpResponse.getContent(),
 					InspectContainer.class);
-		} catch (IOException e) {
+			logger.info(httpResponse.getContent());
+			logger.info(gson.toJson(container));
+			System.out.println(container.getAgentPort());
+			System.out.println(container.getMonitorPort());
+		} catch (Exception e) {
 			logger.error(ExceptionLog.getStackTrace(e));
 		}
 		return container;
