@@ -111,7 +111,7 @@ public class DockerService {
 		List<String> cmds = new ArrayList<String>();
 		cmds.add("/bin/sh");
 		cmds.add("-c");
-		cmds.add("opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
+		cmds.add("/opt/monitor/*.sh&&java -server -jar -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Xverify:none "
 				+ "/opt/bench4q-agent-publish/*.jar");
 		resource.setImageName(IMAGE_NAME);
 		return createTestContainer(resource);
@@ -231,13 +231,18 @@ public class DockerService {
 			return false;
 		}
 		
-		String logFilePath = "./AgentLog/"
-				+ new Date().toString().replace(':', '_');
+		String date = new Date().toString().replace(' ', '_');
+		String logFilePath = "./AgentLog/" + date;
+		String monitorLogPath = "./MonitorLog/" + date;
 		makeContainerLogDir(logFilePath);
+		makeContainerLogDir(monitorLogPath);
 		try {
 			Runtime.getRuntime().exec(
-					"docker cp " + agent.getId() + ":/logs/log.log "
+					"docker cp " + agent.getId() + ":/AgentLogs/log.log "
 							+ logFilePath);
+			Runtime.getRuntime().exec(
+					"docker cp " + agent.getId() + ":/MonitorLogs/log.log "
+							+ monitorLogPath);
 		} catch (IOException e) {
 			logger.warn("copy agent log fail");
 		}

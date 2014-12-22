@@ -2,7 +2,6 @@ package org.bench4q.docker.model;
 
 public class HostConfig {
 	private PortBindings portBindings;
-	private boolean privileged;
 	
 	public PortBindings getPortBindings() {
 		return portBindings;

@@ -3,14 +3,10 @@ package org.bench4q.docker.monitor;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.DispatcherServlet;
-
 public class MonitorServer {
 	private Server server;
 	private int port;
-	private Logger logger = LoggerFactory.getLogger(MonitorServer.class);
 
 	private Server getServer() {
 		return server;

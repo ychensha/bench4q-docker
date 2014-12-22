@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.http.ParseException;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.log4j.Logger;
 import org.bench4q.docker.communication.DockerDaemonMessenger;
 import org.bench4q.docker.model.Container;
@@ -62,7 +60,8 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 	public boolean startContainer(StartContainer startContainer) {
 		boolean result = false;
 		try {
-			HttpResponse response = httpRequester.sendPostJson(buildBaseUrl() + "/containers/" + startContainer.getId() + "/start",
+			HttpResponse response = httpRequester.sendPostJson(buildBaseUrl()
+					+ "/containers/" + startContainer.getId() + "/start",
 					gson.toJson(startContainer), null);
 			if (response.getCode() == DockerStatusCode.START_CONTAINER_SUCCESS_CODE) {
 				result = true;
@@ -110,7 +109,7 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 					+ "/containers/" + id + "/json", null, null);
 			container = gson.fromJson(httpResponse.getContent(),
 					InspectContainer.class);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			logger.error(e.getStackTrace());
 		}
 		return container;
