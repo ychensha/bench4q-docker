@@ -14,8 +14,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
-import org.bench4q.share.master.test.resource.ResourceInfoModel;
-import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.share.models.master.TestResourceModel;
 
 class Cpu {
 	int usage;

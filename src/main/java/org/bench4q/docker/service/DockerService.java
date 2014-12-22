@@ -19,9 +19,9 @@ import org.bench4q.docker.model.Container;
 import org.bench4q.docker.model.CreateContainer;
 import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
-import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.ResourceInfoModel;
-import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.bench4q.share.models.master.AgentModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.share.models.master.TestResourceModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +42,7 @@ public class DockerService {
 	private static final String PROPERTIES_FILE_NAME = "docker-service.properties";
 
 	private Map<String, ResourceInfoModel> containerInfoMap;
-
+	private Map<Integer, String> containerIdMap;
 	@Autowired
 	private DockerDaemonMessenger dockerDaemonMessenger;
 	@Autowired
@@ -51,6 +51,7 @@ public class DockerService {
 	public DockerService() {
 		Properties prop = new Properties();
 		containerInfoMap = new HashMap<String, ResourceInfoModel>();
+		containerIdMap = new HashMap<Integer, String>();
 		try {
 			InputStream inputStream = DockerService.class.getClassLoader()
 					.getResourceAsStream(PROPERTIES_FILE_NAME);
@@ -79,35 +80,30 @@ public class DockerService {
 	public AgentModel createTestContainer(ResourceInfoModel resource) {
 		AgentModel result = new AgentModel();
 		resource = resourceNode.requestResource(resource);
-		System.out.println("get resourceNode response.");
 		if (resource == null) {
 			return null;
 		}
 		CreateContainer createContainer = getCreateContainerFromResourceInfo(resource);
 		String id = dockerDaemonMessenger.createContainer(createContainer);
-		result.setId(id);
-		System.out.println("create finish.");
-		if (result.getId() != null) {
+		result.setContainerId(id);
+		if (result.getContainerId() != null) {
 			if (!dockerDaemonMessenger.startContainer(getStartContainer(
 					resource, id)))
 				return null;
 		}
-		System.out.println("start finish.");
 		setContainerDownloadBandWidth(resource);
-		System.out.println("create container finish.");
-		InspectContainer container = dockerDaemonMessenger
-				.inspectContainer(result.getId());
+		InspectContainer container = dockerDaemonMessenger.inspectContainer(id);
 		try {
 			result.setHostName(getHostInet4Address("eth0"));
 			result.setPort(Integer.valueOf(container.getAgentPort()));
 			result.setMonitorPort(Integer.valueOf(container.getMonitorPort()));
-			result.setResourceInfo(resource);
+			containerInfoMap.put(id, resource);
+			containerIdMap.put(result.getPort(), id);
 		} catch (Exception e) {
 			logger.error("inspect container get wrong info.");
 			remove(result);
 			return null;
 		}
-		containerInfoMap.put(id, resource);
 		return result;
 	}
 
@@ -171,19 +167,6 @@ public class DockerService {
 		}
 		result.put(LXC_CPUSET_CPUS,
 				stringBuilder.substring(0, stringBuilder.length() - 1));
-		// Properties prop = new Properties();
-		// try {
-		//
-		// prop.load(TestResourceController.class.getClassLoader()
-		// .getResourceAsStream(PROPERTIES_FILE_NAME));
-		// FileOutputStream outputStream = new FileOutputStream(
-		// TestResourceController.class.getClassLoader()
-		// .getResource(PROPERTIES_FILE_NAME).toString());
-		// prop.setProperty("VETHID", String.valueOf(VETHID));
-		// prop.store(outputStream, null);
-		// } catch (IOException e) {
-		// e.printStackTrace();
-		// }
 		return result;
 	}
 
@@ -242,6 +225,12 @@ public class DockerService {
 	 */
 	public boolean remove(AgentModel agent) {
 		boolean result = false;
+		String containerId = containerIdMap.get(agent.getPort());
+		if(containerId == null) {
+			logger.error("can not find the agent to remove");
+			return false;
+		}
+		
 		String logFilePath = "./AgentLog/"
 				+ new Date().toString().replace(':', '_');
 		makeContainerLogDir(logFilePath);
@@ -250,19 +239,25 @@ public class DockerService {
 					"docker cp " + agent.getId() + ":/logs/log.log "
 							+ logFilePath);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.warn("copy agent log fail");
 		}
-		if (dockerDaemonMessenger.killContainer(agent.getId())
-				& dockerDaemonMessenger.removeContainer(agent.getId())) {
-			System.out.println("removed " + agent.getId());
-			if(resourceNode != null)
-				resourceNode.releaseResource(agent.getResourceInfo());
+		if (dockerDaemonMessenger.killContainer(containerId)
+				& dockerDaemonMessenger.removeContainer(containerId)) {
+			logger.info("remove agent: " + containerId);
+			if (resourceNode != null)
+				resourceNode.releaseResource(containerInfoMap.get(containerId));
 			result = true;
-			containerInfoMap.remove(agent.getId());
+			containerInfoMap.remove(containerId);
+			containerIdMap.remove(agent.getPort());
 		}
 		return result;
 	}
-
+	
+	protected boolean remove(String id) {
+		return dockerDaemonMessenger.killContainer(id)
+				& dockerDaemonMessenger.removeContainer(id);
+	}
+	
 	private void makeContainerLogDir(String logDirName) {
 		File dir = new File(logDirName);
 		if (dir.exists()) {
@@ -278,7 +273,7 @@ public class DockerService {
 		for (Container container : containers) {
 			if (container.getImage().contains("agent")) {
 				AgentModel agent = new AgentModel();
-				agent.setId(container.getId());
+				agent.setContainerId(container.getId());
 				result.add(agent);
 			}
 		}

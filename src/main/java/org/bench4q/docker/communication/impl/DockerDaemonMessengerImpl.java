@@ -16,7 +16,6 @@ import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.bench4q.share.helper.ExceptionLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -69,7 +68,7 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 				result = true;
 			}
 		} catch (IOException e) {
-			logger.error(ExceptionLog.getStackTrace(e));
+			logger.error(e.getStackTrace());
 		}
 		return result;
 	}
@@ -83,7 +82,7 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 			if (response.getCode() == DockerStatusCode.KILL_CONTAINER_SUCCESS_CODE)
 				result = true;
 		} catch (IOException e) {
-			logger.error(ExceptionLog.getStackTrace(e));
+			logger.error(e.getStackTrace());
 		}
 		return result;
 	}
@@ -97,7 +96,7 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 			if (response.getCode() == DockerStatusCode.REMOVE_CONTAINER_SUCCESS_CODE)
 				result = true;
 		} catch (IOException e) {
-			logger.error(ExceptionLog.getStackTrace(e));
+			logger.error(e.getStackTrace());
 		}
 		return result;
 	}
@@ -112,7 +111,7 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 			container = gson.fromJson(httpResponse.getContent(),
 					InspectContainer.class);
 		} catch (IOException e) {
-			logger.error(ExceptionLog.getStackTrace(e));
+			logger.error(e.getStackTrace());
 		}
 		return container;
 	}
@@ -126,12 +125,8 @@ public class DockerDaemonMessengerImpl implements DockerDaemonMessenger {
 			containers = gson.fromJson(response.getContent(),
 					new TypeToken<List<Container>>() {
 					}.getType());
-		} catch (ParseException e) {
-			e.printStackTrace();
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			logger.error(e.getStackTrace());
 		}
 		return containers;
 	}

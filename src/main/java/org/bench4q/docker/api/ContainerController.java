@@ -4,14 +4,15 @@ import java.io.IOException;
 
 import org.bench4q.docker.service.DockerService;
 import org.bench4q.docker.service.ResourceNode;
-
-
 import org.bench4q.docker.model.CreatedContainerList;
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.bench4q.share.helper.MarshalHelper;
-import org.bench4q.share.master.test.resource.*;
-import org.bench4q.share.models.mainframe.MainFrameDockerResponseModel;
+import org.bench4q.share.models.master.AgentModel;
+import org.bench4q.share.models.master.MainFrameDockerResponseModel;
+import org.bench4q.share.models.master.MainFrameResponseModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.share.models.master.TestResourceModel;
+import org.bench4q.utils.MarshalHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -67,14 +68,10 @@ public class ContainerController {
 		}
 		int response = checkAgent(agentModel);
 		if (response == 0) {
-			System.out.println("test container is not aval.");
 			controller.remove(agentModel);
-			System.out.println("remove failed container");
 			return setResponseModel(false, "start agent fail", null);
 		}
-		this.getContaiers().getAgentModels().add(agentModel);
 		postResourInfo(agentModel, resource);
-		System.out.println("test container starts up.");
 		return setResponseModel(true, "", agentModel);
 	}
 
@@ -119,9 +116,7 @@ public class ContainerController {
 				}
 			}
 			if (agentModelToRemoved != null) {
-
-				this.getContaiers().getAgentModels()
-						.remove(agentModelToRemoved);
+				this.getContaiers().getAgentModels().remove(agentModelToRemoved);
 			}
 		}
 		return result;
@@ -157,8 +152,8 @@ public class ContainerController {
 					break;
 				response = httpRequester.sendGet(agent.getHostName() + ":"
 						+ agent.getPort(), null, null);
-				response = httpRequester.sendGet(agent.getHostName() + ":"
-						+ agent.getMonitorPort(), null, null);
+//				response = httpRequester.sendGet(agent.getHostName() + ":"
+//						+ agent.getMonitorPort(), null, null);
 				result = response.getCode();
 				Thread.currentThread();
 				Thread.sleep(1000);

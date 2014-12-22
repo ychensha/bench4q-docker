@@ -8,11 +8,11 @@ import javax.xml.bind.JAXBException;
 
 import org.bench4q.share.communication.HttpRequester;
 import org.bench4q.share.communication.HttpRequester.HttpResponse;
-import org.bench4q.share.helper.MarshalHelper;
-import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.MainFrameResponseModel;
-import org.bench4q.share.master.test.resource.ResourceInfoModel;
-import org.bench4q.share.models.mainframe.MainFrameDockerResponseModel;
+import org.bench4q.share.models.master.AgentModel;
+import org.bench4q.share.models.master.MainFrameDockerResponseModel;
+import org.bench4q.share.models.master.MainFrameResponseModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.utils.MarshalHelper;
 
 import junit.framework.TestCase;
 
@@ -36,7 +36,7 @@ public class TestContainerController extends TestCase{
 		cmds.add("/opt/monitor/*.sh&&java -server -jar /opt/bench4q-agent-publish/*.jar");
 //		cmds.add("tc qdisc add dev eth0 root tbf rate 200kbps latency 50ms burst 50000 mpu 64 mtu 1500");
 		resourceInfo.setCmds(cmds);
-		resourceInfo.setImageName("chensha/docker");
+		resourceInfo.setImageName("bench4q-agent");
 		HttpResponse response = null;
 		try {
 			response = httpRequester.sendPostXml(buildBaseUrl()
@@ -51,7 +51,6 @@ public class TestContainerController extends TestCase{
 				agent = dockerResponse.getAgentModel();
 				System.out.println(agent.getId());
 				System.out.println(agent.getPort());
-				System.out.println(agent.getMonitorPort());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

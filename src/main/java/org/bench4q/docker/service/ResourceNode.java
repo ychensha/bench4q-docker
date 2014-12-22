@@ -6,9 +6,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.PostConstruct;
 
-import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.ResourceInfoModel;
-import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.bench4q.share.models.master.AgentModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.share.models.master.TestResourceModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ public class ResourceNode {
 	private DockerBlotter dockerBlotter;
 	private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 	@Autowired
-	private DockerService dockerApi;
+	private DockerService dockerService;
 
 	@PostConstruct
 	public void init() {
@@ -27,9 +27,9 @@ public class ResourceNode {
 	}
 
 	private void cleanUp() {
-		List<AgentModel> runningContainerList = dockerApi.getAgentList();
+		List<AgentModel> runningContainerList = dockerService.getAgentList();
 		for (AgentModel container : runningContainerList) {
-			dockerApi.remove(container);
+			dockerService.remove(container.getContainerId());
 		}
 	}
 

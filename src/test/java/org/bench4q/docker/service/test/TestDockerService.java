@@ -9,9 +9,9 @@ import org.bench4q.docker.model.InspectContainer;
 import org.bench4q.docker.model.StartContainer;
 import org.bench4q.docker.service.DockerService;
 import org.bench4q.docker.service.ResourceNode;
-import org.bench4q.share.master.test.resource.AgentModel;
-import org.bench4q.share.master.test.resource.ResourceInfoModel;
-import org.bench4q.share.master.test.resource.TestResourceModel;
+import org.bench4q.share.models.master.AgentModel;
+import org.bench4q.share.models.master.ResourceInfoModel;
+import org.bench4q.share.models.master.TestResourceModel;
 
 import static org.easymock.EasyMock.*;
 import junit.framework.TestCase;
